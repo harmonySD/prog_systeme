@@ -60,7 +60,9 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
             enteteFile *addr=malloc(sizeof(enteteFile)); //pointeur vers region de memoire partagee
             m->file= addr;
             addr = mmap(NULL, sizeof(int), PROT_READ| PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,-1,0);
+            addr->nb_proc_co+=1;
             m->file= addr;
+       
         }else{
             //ouvrir morceau de memoire partagee 
             if((options == O_RDONLY)||(options == O_WRONLY)||(options == O_RDWR)){
@@ -73,11 +75,15 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
                 fstat(d,&buf);
                 m->type= buf.st_mode;
                 mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
+                int r = pthread_mutex_lock(&(mem->mutex));
+                mem->nb_proc_co+=1;
+                r = pthread_mutex_unlock(&mem->mutex);
                 m->file=mem;
+                
                 //mettre dans mem l'entete deja prensete dans le memoire partager
                 //entetefile existe deja ? on connait les file existante ? oui juste a ouvrir mmap (nom)
-            }else if((options == (O_RDONLY| O_EXCL))||(options == (O_WRONLY|O_EXCL))||
-                (options == (O_RDWR|O_EXCL))){
+            }else if((options == (O_RDONLY| O_CREAT))||(options == (O_WRONLY|O_CREAT))||
+                (options == (O_RDWR|O_CREAT))){
                 //on cree la file 
                 // printf("mode %d\n",mode);
                 // printf("%d\n",S_IRUSR | S_IWUSR);
@@ -87,6 +93,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
                 enteteFile *mem;
                 mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
                 int r = pthread_mutex_lock(&(mem->mutex));
+                mem->nb_proc_co=1;
                 mem->capacite=nb_msg;
                 mem->longMax=len_max;
                 msync(mem, sizeof(mem), MS_SYNC);
@@ -107,8 +114,11 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
                 mem->capacite=nb_msg;
                 // gerer erreur
                 mem->longMax=len_max;
+                mem->nb_proc_co=1;
                 r = pthread_mutex_unlock(&mem->mutex);
                 m->file=mem;
+               
+                
 
             }
     
@@ -119,7 +129,11 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
 
 // deconnection de la file 
 int m_deconnexion(MESSAGE *file){
-
+    if(file->file->nb_proc_co>0){
+        file->file->nb_proc_co-=1;
+        file->file=NULL;
+        return 0;
+    }
     return -1;
 }
 
@@ -165,11 +179,16 @@ void affichage_message(MESSAGE *m){
     
 }
 void affichage_entete(enteteFile *e){
-    printf("long max : %zu\n",e->longMax);
-    printf("capacite : %zu\n", e->capacite);
-    printf("first : %d last : %d \n", e->first, e->last);
-    for(int i= e->first; i<e->last; i++){
-        affichage_mon_mess(e->tabMessage[i]);
+    if(e==NULL){
+        printf("null\n");
+    }else{
+        printf("long max : %zu\n",e->longMax);
+        printf("capacite : %zu\n", e->capacite);
+        printf("first : %d last : %d \n", e->first, e->last);
+        printf("nb_proc :%d\n",e->nb_proc_co);
+        for(int i= e->first; i<e->last; i++){
+            affichage_mon_mess(e->tabMessage[i]);
+        }
     }
 }
 void affichage_mon_mess(mon_message mm){
@@ -178,10 +197,13 @@ void affichage_mon_mess(mon_message mm){
 
 
 int main(int argc, char const *argv[]){
-    MESSAGE * m = m_connexion("/toto", O_RDWR, 0);
+    MESSAGE * m = m_connexion("/toto", O_RDWR|O_CREAT, 3, 3, 10, S_IRUSR | S_IWUSR);
     affichage_message(m);
     printf("\n");
-    MESSAGE *m1 = m_connexion(NULL,O_RDWR|O_CREAT, 3, 3, 10, S_IRUSR | S_IWUSR);
+    MESSAGE *m1 = m_connexion("/toto",O_RDWR, 0);
+    affichage_message(m1);
+    printf("%d\n",m_deconnexion(m1));
+    affichage_message(m);
     affichage_message(m1);
 
     return 0;

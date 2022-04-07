@@ -27,6 +27,7 @@ typedef struct{
     int last;
     pthread_mutex_t mutex;
     mon_message *tabMessage;
+    int nb_proc_co;
 }enteteFile;
 
 typedef struct{
