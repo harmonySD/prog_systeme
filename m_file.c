@@ -57,11 +57,16 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
         }
         if(nom == NULL){
             //file ano caca
-            enteteFile *addr=malloc(sizeof(enteteFile)); //pointeur vers region de memoire partagee
-            m->file= addr;
-            addr = mmap(NULL, sizeof(int), PROT_READ| PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,-1,0);
-            addr->nb_proc_co+=1;
-            m->file= addr;
+            enteteFile *mem=malloc(sizeof(enteteFile)); //pointeur vers region de memoire partagee
+            mem = mmap(NULL, sizeof(enteteFile), PROT_READ| PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,-1,0);
+            int r = pthread_mutex_lock(&(mem->mutex));
+            mem->nb_proc_co+=1;
+            mem->nb_proc_co=1;
+            mem->capacite=nb_msg;
+            mem->longMax=len_max;
+            msync(mem, sizeof(mem), MS_SYNC);
+            r = pthread_mutex_unlock(&mem->mutex);
+            m->file= mem;
        
         }else{
             //ouvrir morceau de memoire partagee 
@@ -132,6 +137,7 @@ int m_deconnexion(MESSAGE *file){
     if(file->file->nb_proc_co>0){
         file->file->nb_proc_co-=1;
         file->file=NULL;
+        file->type=0;
         return 0;
     }
     return -1;
@@ -139,6 +145,17 @@ int m_deconnexion(MESSAGE *file){
 
 // destruction de la file
 int m_destruction(const char *nom){
+    int d=shm_open(nom,O_RDWR, 0666);
+    ftruncate(d,sizeof(enteteFile));
+    enteteFile *mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
+    if(mem->nb_proc_co<=0){
+            if(munmap(mem, sizeof(enteteFile))==-1){
+                return -1;
+            }
+            return 0;
+    }else{
+        return -1;
+    }
 
     return -1;
 }
@@ -172,7 +189,9 @@ size_t m_nb(MESSAGE *file){
 }
 void affichage_message(MESSAGE *m){
     if(m==NULL) printf("null\n");
-    else {
+    else if(m->file==NULL && m->type==0){
+        printf("null\n");
+    }else{
         printf("type : %ld\n",m->type);
         affichage_entete(m->file);
     }
@@ -205,6 +224,10 @@ int main(int argc, char const *argv[]){
     printf("%d\n",m_deconnexion(m1));
     affichage_message(m);
     affichage_message(m1);
-
+    printf("destruc %d\n",m_destruction("/toto"));
+    printf("%d\n",m_deconnexion(m));
+    printf("destruc %d\n",m_destruction("/toto"));
+    affichage_message(m);
+    affichage_message(m1);
     return 0;
 }
