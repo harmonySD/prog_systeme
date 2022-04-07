@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdarg.h>
 
 #include "m_file.h"
 
@@ -40,10 +41,80 @@ int initialiser_cond(pthread_cond_t *pcond){
 }
 
 // connexion a une file de message ou creation
-MESSAGE *m_connexion(const char *nom, int options, 
-    size_t nb_msg, size_t len_max, mode_t mode){
+MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg, size_t len_max, mode_t mode
+        // nb = 0 ou 3 -> nb darguments en plus
+        MESSAGE *m=malloc(sizeof(MESSAGE));
+        va_list param;
+        va_start(param, nb);
+        size_t nb_msg;
+        size_t len_max;
+        mode_t mode;
+        if(nb!=0){
+            nb_msg =(size_t) va_arg(param, size_t);
+            len_max =(size_t) va_arg(param, size_t);
+            mode = (mode_t)va_arg(param, int); 
+            m->type=mode;
+        }
+        if(nom == NULL){
+            //file ano caca
+            enteteFile *addr=malloc(sizeof(enteteFile)); //pointeur vers region de memoire partagee
+            m->file= addr;
+            addr = mmap(NULL, sizeof(int), PROT_READ| PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,-1,0);
+            m->file= addr;
+        }else{
+            //ouvrir morceau de memoire partagee 
+            if((options == O_RDONLY)||(options == O_WRONLY)||(options == O_RDWR)){
+                // on ne cree pas la file on a que 2 arg 
+                int d = shm_open(nom, options);
+                ftruncate(d,sizeof(enteteFile));
+                if(d<0) return NULL;
+                enteteFile *mem;
+                struct stat buf;
+                fstat(d,&buf);
+                m->type= buf.st_mode;
+                mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
+                m->file=mem;
+                //mettre dans mem l'entete deja prensete dans le memoire partager
+                //entetefile existe deja ? on connait les file existante ? oui juste a ouvrir mmap (nom)
+            }else if((options == (O_RDONLY| O_EXCL))||(options == (O_WRONLY|O_EXCL))||
+                (options == (O_RDWR|O_EXCL))){
+                //on cree la file 
+                // printf("mode %d\n",mode);
+                // printf("%d\n",S_IRUSR | S_IWUSR);
+                int d = shm_open(nom, options, mode);
+                ftruncate(d,sizeof(enteteFile));
+                if(d<0) return NULL;
+                enteteFile *mem;
+                mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
+                int r = pthread_mutex_lock(&(mem->mutex));
+                mem->capacite=nb_msg;
+                mem->longMax=len_max;
+                msync(mem, sizeof(mem), MS_SYNC);
+                r = pthread_mutex_unlock(&mem->mutex);
+                m->file=mem;
+                
+            }else if((options == (O_RDONLY| O_CREAT| O_EXCL))||
+                (options == (O_WRONLY|O_CREAT|O_EXCL))||
+                (options == (O_RDWR|O_CREAT|O_EXCL))){
 
-    return NULL;
+                //si la file existe deja il faut echouer normalement shm_open le fait
+                int d = shm_open(nom, options, mode);
+                if(d<0) return NULL;
+                ftruncate(d,sizeof(enteteFile));
+                enteteFile *mem;
+                mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
+                int r = pthread_mutex_lock(&mem->mutex);
+                mem->capacite=nb_msg;
+                // gerer erreur
+                mem->longMax=len_max;
+                r = pthread_mutex_unlock(&mem->mutex);
+                m->file=mem;
+
+            }
+    
+        }
+        va_end(param);
+        return m;
 }
 
 // deconnection de la file 
@@ -85,10 +156,33 @@ size_t m_nb(MESSAGE *file){
 
     return 0;
 }
+void affichage_message(MESSAGE *m){
+    if(m==NULL) printf("null\n");
+    else {
+        printf("type : %ld\n",m->type);
+        affichage_entete(m->file);
+    }
+    
+}
+void affichage_entete(enteteFile *e){
+    printf("long max : %zu\n",e->longMax);
+    printf("capacite : %zu\n", e->capacite);
+    printf("first : %d last : %d \n", e->first, e->last);
+    for(int i= e->first; i<e->last; i++){
+        affichage_mon_mess(e->tabMessage[i]);
+    }
+}
+void affichage_mon_mess(mon_message mm){
+    printf("type mon mess : %ld %s", mm.type, mm.mtext);
+}
+
 
 int main(int argc, char const *argv[]){
-
-    
+    MESSAGE * m = m_connexion("/toto", O_RDWR, 0);
+    affichage_message(m);
+    printf("\n");
+    MESSAGE *m1 = m_connexion(NULL,O_RDWR|O_CREAT, 3, 3, 10, S_IRUSR | S_IWUSR);
+    affichage_message(m1);
 
     return 0;
 }
