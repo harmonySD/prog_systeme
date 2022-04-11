@@ -1,17 +1,17 @@
 .PHONY=clean all
 CC=gcc
-CFLAGS= -g -Wall -pedantic -pthread
-LDLIBS=-lm
+CFLAGS = -g -Wall -pedantic -pthread 
+LDLIBS = -lm -lrt 
 
 ALL = m_file
 
 all: $(ALL)
 
 m_file.o: m_file.c m_file.h
-	$(CC) $(CFLAGS) -c m_file.c
+	$(CC) $(CFLAGS) -c m_file.c $(LDLIBS)
 
 m_file: m_file.o 
-	$(CC) $(CFLAGS) m_file.o -o m_file
+	$(CC) $(CFLAGS) m_file.o -o m_file $(LDLIBS)
 
 # m_file: m_file.o 
 # m_file.o: m_file.c 
