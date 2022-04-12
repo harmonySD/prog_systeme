@@ -198,11 +198,12 @@ int m_envoi(MESSAGE *file, const void *msg,
             int r = pthread_mutex_lock(&file->file->mutex);
             if(r == -1) return -1;
             printf("coucou1\n");
-            mon_message *m = malloc(sizeof(msg));
+            mon_message *m = malloc(sizeof(mon_message));
             printf("coucou2\n");
             memcpy(m,msg,len);
             printf("coucou3\n");
-            // affichage_mon_mess(*m);
+            printf("data %d %p\n", *(const mon_message *) msg, msg);
+           // affichage_mon_mess(msg);
             // memcpy(file->file->tabMessage+(file->file->last),m,sizeof(mon_message));
             file->file->tabMessage[file->file->last] =  *m;
             printf("coucou4\n");
@@ -267,49 +268,47 @@ void affichage_mon_mess(mon_message mm){
 int main(int argc, char const *argv[]){
 //    printf("destruc %d\n",m_destruction("/toto"));
 
-    // MESSAGE* m = m_connexion("/f", O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
-    
-    MESSAGE *m = m_connexion("/f",O_RDWR, 0);
+    MESSAGE * m = m_connexion("/toto", O_RDWR|O_CREAT, 3, 3, 10, S_IRUSR | S_IWUSR);
     affichage_message(m);
     printf("\n");
-    MESSAGE *m1 = m_connexion("/f",O_RDWR, 0);
+    MESSAGE *m1 = m_connexion("/toto",O_RDWR, 0);
     affichage_message(m1);
-    printf("\n\n");
 
-    // int t[2] = {-12, 99};
-    // printf("test1\n");
-    char * t = "coucou";
+
+    int t[2] = {-12, 99};
+    printf("test1\n");
+    // //char * ti = "coucou";
     mon_message *mes = malloc(sizeof(mon_message) + sizeof(t));
-    // printf("test2\n");
+    printf("test2\n");
     if( mes == NULL ) return -1;
-    // printf("test3\n");
+    printf("test3\n");
     mes->type = (long) getpid(); /* comme type de message, on choisit l’identité
-                                * de l’expéditeur */
-    mes->mtext = t;
-    // printf("test4\n");
-    // memcpy( mes->mtext, t, sizeof(*t)) ; /* copier les deux int à envoyer */
-    // printf("test5\n");
+    //                             * de l’expéditeur */
+    printf("test4\n");
+    memmove( mes->mtext, t, sizeof(t)) ; /* copier les deux int à envoyer */
+    printf("test5\n");
 
     int i = m_envoi(m,mes,sizeof(t),O_NONBLOCK);
     if(i == 0){
+        printf("OOOOOKKKKK\n");
         affichage_message(m);
         affichage_message(m1);
     }
-    else if(i == -1 && errno == EAGAIN){
-        printf("file pleine, attendez un peu\n");
-    }
-    else {
-        printf("erreur\n");
-    }
+    // else if(i == -1 && errno == EAGAIN){
+    //     printf("file pleine, attendez un peu\n");
+    // }
+    // else {
+    //     printf("erreur\n");
+    // }
 
-    printf("\n%d\n",m_deconnexion(m1));
-    affichage_message(m);
-    affichage_message(m1);
-    printf("destruc %d\n",m_destruction("/a"));
-    printf("%d\n",m_deconnexion(m));
-    printf("destruc %d\n",m_destruction("/a"));
-    affichage_message(m);
-    affichage_message(m1);
+    // printf("\n%d\n",m_deconnexion(m1));
+    // affichage_message(m);
+    // affichage_message(m1);
+    // printf("destruc %d\n",m_destruction("/a"));
+    // printf("%d\n",m_deconnexion(m));
+    // printf("destruc %d\n",m_destruction("/a"));
+    // affichage_message(m);
+    // affichage_message(m1);
 
 
     return 0;

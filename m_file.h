@@ -20,7 +20,7 @@
 
 typedef struct{
     long type;
-    char *mtext;
+    char mtext[];
 }mon_message;
 
 typedef struct{
@@ -30,7 +30,7 @@ typedef struct{
     int last;
     pthread_mutex_t mutex;
     int nb_proc_co;
-    mon_message tabMessage[];
+    mon_message *tabMessage;
 }enteteFile;
 
 typedef struct{
