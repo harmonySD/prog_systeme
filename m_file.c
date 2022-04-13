@@ -113,7 +113,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
             mem=mmap(NULL,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
             int r =  initialiser_mutex(&mem->mutex);
             if(r == -1) return NULL;
-            // r = pthread_mutex_lock(&mem->mutex);
+            // int r = pthread_mutex_lock(&mem->mutex);
             // if(r == -1) return NULL;
             mem->nb_proc_co = 1;
             mem->capacite = nb_msg;
@@ -134,16 +134,16 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
             ftruncate(d,sizeof(enteteFile));
             enteteFile *mem;
             mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
-            int r =  initialiser_mutex(&mem->mutex);
-            if(r == -1) return NULL;
-            // r = pthread_mutex_lock(&mem->mutex);
+            // int r =  initialiser_mutex(&mem->mutex);
             // if(r == -1) return NULL;
+            int r = pthread_mutex_lock(&mem->mutex);
+            if(r == -1) return NULL;
             mem->capacite = nb_msg;
             mem->longMax = len_max;
             mem->nb_proc_co = 1;
-            // msync(mem, sizeof(mem), MS_SYNC);
-            // r = pthread_mutex_unlock(&mem->mutex);
-            // if(r == -1) return NULL;
+            msync(mem, sizeof(mem), MS_SYNC);
+            r = pthread_mutex_unlock(&mem->mutex);
+            if(r == -1) return NULL;
             m->file = mem;
             // munmap(mem,sizeof(enteteFile));
         }
@@ -154,6 +154,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
 
 // deconnection de la file 
 int m_deconnexion(MESSAGE *file){
+    if(file == NULL) return -1;
     if(file->file->nb_proc_co>0){
         file->file->nb_proc_co -= 1;
         file->file = NULL;
@@ -166,6 +167,7 @@ int m_deconnexion(MESSAGE *file){
 // destruction de la file
 int m_destruction(const char *nom){
     int d=shm_open(nom,O_RDWR, 0666);
+    if(d == -1) return -2;
     ftruncate(d,sizeof(enteteFile));
     enteteFile *mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
     if(mem->nb_proc_co<=0){
@@ -176,7 +178,6 @@ int m_destruction(const char *nom){
     }else{
         return -1;
     }
-    return -1;
 }
 
 // envoie de message
@@ -186,35 +187,37 @@ int m_envoi(MESSAGE *file, const void *msg,
 
     }
     else if(msgflag==O_NONBLOCK){
-        // printf("mess %p\n",msg);
-        // affichage_mon_mess((mon_message)*msg);
         if(file->file->last == file->file->capacite){
             errno = EAGAIN;
             return -1;
         }
         else {
-            printf("coucou else\n");
+            // printf("coucou else\n");
+
+            // verifier len pas trop grand
             if(file->file->longMax < len) return -1;
+
             int r = pthread_mutex_lock(&file->file->mutex);
             if(r == -1) return -1;
-            printf("coucou1\n");
-            mon_message *m = malloc(sizeof(msg));
-            printf("coucou2\n");
-            memcpy(m,msg,len);
-            printf("coucou3\n");
-            // affichage_mon_mess(*m);
-            // memcpy(file->file->tabMessage+(file->file->last),m,sizeof(mon_message));
-            file->file->tabMessage[file->file->last] =  *m;
-            printf("coucou4\n");
+            // printf("coucou1\n");
+            mon_message *m = malloc(sizeof(msg)+len);
+            // printf("coucou2\n");
+            memmove(m,msg,sizeof(mon_message)+len);
+            // printf("coucou3\n");
+            affichage_mon_mess(m);
+            printf("\n");
+            memmove(file->file->tabMessage+(file->file->last),m,sizeof(mon_message)+len);
+            // file->file->tabMessage[file->file->last] =  *m;
+            // printf("coucou4\n");
             file->file->last++;
             msync(file->file, sizeof(file->file), MS_SYNC);
-            printf("coucou5\n");
+            // printf("coucou5\n");
             r = pthread_mutex_unlock(&file->file->mutex);
             if(r == -1) return -1;
         }
     }
     else return -1;
-    printf("coucoufin\n");
+    // printf("coucoufin\n");
     return 0;
 }
 
@@ -252,62 +255,109 @@ void affichage_entete(enteteFile *e){
     }else{
         printf("long max : %zu\n",e->longMax);
         printf("capacite : %zu\n", e->capacite);
-        printf("first : %d last : %d \n", e->first, e->last);
-        printf("nb_proc :%d\n",e->nb_proc_co);
+        printf("first : %d, last : %d \n", e->first, e->last);
+        printf("nb_proc : %d\n",e->nb_proc_co);
         for(int i= e->first; i<e->last; i++){
-            affichage_mon_mess(e->tabMessage[i]);
+            affichage_mon_mess(&(e->tabMessage[i]));
+            printf("\n");
         }
     }
 }
-void affichage_mon_mess(mon_message mm){
-    printf("type mon mess : %ld %s", mm.type, mm.mtext);
+void affichage_mon_mess(mon_message *mm){
+    // printf("mon_mess.type : %ld \n",mm->type);
+    char buf[256];
+    // char *type = "type : ";
+    // char *mess = ", mon mess : ";
+    char text[12];
+    memmove(text,mm->mtext,strlen(mm->mtext));
+    text[10] = '\0';
+    sprintf(buf,"type : %ld, mon mess : %s",mm->type,text);
+    write(STDOUT_FILENO,buf,sizeof(mm)+22);
+    // printf("type : %ld, mon mess : %s", mm->type, mm->mtext);
 }
 
+int enlever(const char *nom){
+    int d=shm_open(nom,O_RDWR, 0666);
+    if(d == -1) return -2;
+    ftruncate(d,sizeof(enteteFile));
+    enteteFile *mem=mmap(0,sizeof(enteteFile),PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
+    if(munmap(mem, sizeof(enteteFile))==-1){
+        return -1;
+    }
+    return 0;
+}
 
 int main(int argc, char const *argv[]){
-//    printf("destruc %d\n",m_destruction("/toto"));
+    // /dev/shm
 
-    // MESSAGE* m = m_connexion("/f", O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
+    // char n = 'a'; 
+    // for(int i=0;i<26;i++){
+    //     // printf("n:%c ",n);
+    //     char nom[2];
+    //     nom[0] = '/';
+    //     nom[1] = n;
+    //     // printf("nom:%s\n",nom);
+    //     printf("enlever %s:%d\n",nom,enlever(nom)); 
+    //     n++;
+    // }
+    // printf("\n\n");
+
+    char * path = "/a";
+
+    MESSAGE* m = m_connexion(path, O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
     
-    MESSAGE *m = m_connexion("/f",O_RDWR, 0);
+    // MESSAGE *m = m_connexion(path,O_RDWR, 0);
     affichage_message(m);
     printf("\n");
-    MESSAGE *m1 = m_connexion("/f",O_RDWR, 0);
+    MESSAGE *m1 = m_connexion(path,O_RDWR, 0);
     affichage_message(m1);
     printf("\n\n");
 
     // int t[2] = {-12, 99};
+    char *t = "salut1";
     // printf("test1\n");
-    char * t = "coucou";
-    mon_message *mes = malloc(sizeof(mon_message) + sizeof(t));
+    // //char * ti = "coucou";
+    mon_message *mes = malloc(sizeof(mon_message) + sizeof(t)+1);
     // printf("test2\n");
     if( mes == NULL ) return -1;
     // printf("test3\n");
     mes->type = (long) getpid(); /* comme type de message, on choisit l’identité
-                                * de l’expéditeur */
-    mes->mtext = t;
+    //                             * de l’expéditeur */
     // printf("test4\n");
-    // memcpy( mes->mtext, t, sizeof(*t)) ; /* copier les deux int à envoyer */
+    memmove( mes->mtext, t, sizeof(t)+1) ; /* copier les deux int à envoyer */
     // printf("test5\n");
+    affichage_mon_mess(mes);
+    printf("\n");
 
-    int i = m_envoi(m,mes,sizeof(t),O_NONBLOCK);
-    if(i == 0){
-        affichage_message(m);
-        affichage_message(m1);
-    }
-    else if(i == -1 && errno == EAGAIN){
-        printf("file pleine, attendez un peu\n");
-    }
-    else {
-        printf("erreur\n");
-    }
+    for(int j=0;j<4;j++){
+        int i = m_envoi(m,mes,sizeof(t)+1,O_NONBLOCK);
+        if(i == 0){
+            printf("Ok %d\n",j);
+            affichage_message(m);
+            printf("\n");
+            affichage_message(m1);
+            printf("\n");
+        }
+        else if(i == -1 && errno == EAGAIN){
+            printf("file pleine, attendez un peu\n");
+        }
+        else {
+            printf("erreur\n");
+        }
 
-    printf("\n%d\n",m_deconnexion(m1));
+    }
+    
+    
+
+    // sleep(15);
+    printf("\ndeco %d\n",m_deconnexion(m));
     affichage_message(m);
     affichage_message(m1);
-    printf("destruc %d\n",m_destruction("/a"));
-    printf("%d\n",m_deconnexion(m));
-    printf("destruc %d\n",m_destruction("/a"));
+    printf("destruc %d\n",m_destruction(path));
+    printf("deco %d\n",m_deconnexion(m1));
+    printf("destruc %d\n",m_destruction(path));
+    // MESSAGE *m2 = m_connexion(path,O_RDWR, 0);
+    // affichage_message(m2);
     affichage_message(m);
     affichage_message(m1);
 
