@@ -187,7 +187,7 @@ int m_envoi(MESSAGE *file, const void *msg,
     }
     else if(msgflag==O_NONBLOCK){
         // printf("mess %p\n",msg);
-        // affichage_mon_mess((mon_message)*msg);
+        //affichage_mon_mess((mon_message)*msg);
         if(file->file->last == file->file->capacite){
             errno = EAGAIN;
             return -1;
@@ -202,8 +202,9 @@ int m_envoi(MESSAGE *file, const void *msg,
             printf("coucou2\n");
             memcpy(m,msg,len);
             printf("coucou3\n");
-            printf("data %d %p\n", *(const mon_message *) msg, msg);
-           // affichage_mon_mess(msg);
+            printf("%ld\n",m->type);
+            printf("%s\n", m->mtext);
+           // affichage_mon_mess(*m);
             // memcpy(file->file->tabMessage+(file->file->last),m,sizeof(mon_message));
             file->file->tabMessage[file->file->last] =  *m;
             printf("coucou4\n");
@@ -287,6 +288,7 @@ int main(int argc, char const *argv[]){
     printf("test4\n");
     memmove( mes->mtext, t, sizeof(t)) ; /* copier les deux int à envoyer */
     printf("test5\n");
+    affichage_mon_mess(*mes);
 
     int i = m_envoi(m,mes,sizeof(t),O_NONBLOCK);
     if(i == 0){
