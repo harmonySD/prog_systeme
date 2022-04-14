@@ -207,22 +207,23 @@ int m_envoi(MESSAGE *file, const void *msg,
             return -1;
         }
         else {
-            // printf("coucou else\n");
-
             // verifier len pas trop grand
             if(file->file->longMax < len) return -1;
 
             int r = pthread_mutex_lock(&file->file->mutex);
             if(r == -1) return -1;
-            // printf("coucou1\n");
             mon_message *m = malloc(sizeof(msg)+len);
-            // printf("coucou2\n");
+
             memmove(m,msg,sizeof(mon_message)+len);
-            // printf("coucou3\n");
+            printf(" M->TEXT %s\n", m->mtext);
+             
+            printf("LES AUTRES %s\n",file->file->tabMessage[0].mtext);
+            printf("LES AUTRES %s\n",file->file->tabMessage[1].mtext);
+            printf("LES AUTRES %s\n",file->file->tabMessage[2].mtext);
             affichage_mon_mess(m);
-            printf("\n");
+           // printf("\n");
             memmove(file->file->tabMessage+(file->file->last),m,sizeof(mon_message)+len);
-            // file->file->tabMessage[file->file->last] =  *m;
+             //file->file->tabMessage[file->file->last] =  *m;
             // printf("coucou4\n");
             // printf("taiiiiiille %zu\n",m_nb(file));
             file->file->last++;
@@ -335,15 +336,21 @@ void affichage_entete(enteteFile *e){
 }
 void affichage_mon_mess(mon_message *mm){
     // printf("mon_mess.type : %ld \n",mm->type);
-    char buf[256];
-    // char *type = "type : ";
-    // char *mess = ", mon mess : ";
-    char text[12];
-    memmove(text,mm->mtext,strlen(mm->mtext));
-    text[10] = '\0';
-    sprintf(buf,"type : %ld, mon mess : %s",mm->type,text);
-    write(STDOUT_FILENO,buf,sizeof(mm)+22);
+    printf("type %ld mess %s\n",mm->type,mm->mtext);
+    //printf(" sizeof %d\n",sizeof(mm->mtext));
+    //printf("strlen %lu\n",strlen(mm->mtext));
+    // char buf[256];
+    // // char *type = "type : ";
+    // // char *mess = ", mon mess : ";
+    // char text[12];
+    // memmove(text,mm->mtext,strlen(mm->mtext));
+    // text[10] = '\0';
+    // sprintf(buf,"type : %ld, mon mess : %s",mm->type,text);
+    // write(STDOUT_FILENO,buf,sizeof(mm)+22);
     // printf("type : %ld, mon mess : %s", mm->type, mm->mtext);
+  /// printf("mon mess: %d\n",sizeof(mm->mtext));
+
+   
 }
 
 int enlever(const char *nom){
@@ -372,7 +379,7 @@ int main(int argc, char const *argv[]){
     // }
     // printf("\n\n");
 
-    char * path = "/bloupsss";
+    char * path = "/bloupsssss";
 
     MESSAGE* m = m_connexion(path, O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
     
@@ -384,7 +391,8 @@ int main(int argc, char const *argv[]){
     printf("\n\n");
 
     // int t[2] = {-12, 99};
-    char *t = "salut1";
+    char *t = "saloute";
+    printf("sizeof salut %lu\n",sizeof(t));
     // printf("test1\n");
     // //char * ti = "coucou";
     mon_message *mes = malloc(sizeof(mon_message) + sizeof(t)+1);
@@ -398,24 +406,81 @@ int main(int argc, char const *argv[]){
     // printf("test5\n");
     //affichage_mon_mess(mes);
     printf("\n");
-
-    for(int j=0;j<4;j++){
-        int i = m_envoi(m,mes,sizeof(t)+1,O_NONBLOCK);
-        if(i == 0){
-            printf("Ok %d\n",j);
-            affichage_message(m);
-            printf("\n");
-            affichage_message(m1);
-            printf("\n");
-        }
-        else if(i == -1 && errno == EAGAIN){
-            printf("file pleine, attendez un peu\n");
-        }
-        else {
-            printf("erreur\n");
-        }
-
+    int i = m_envoi(m,mes,sizeof(t)+1,O_NONBLOCK);
+    if(i == 0){
+        printf("Ok \n");
+        affichage_message(m);
+        printf("\n");
+        affichage_message(m1);
+        printf("\n");
     }
+    char *t2 = "bonjour";
+      printf("sizeof bonjour %lu\n",sizeof(t2));
+    // printf("test1\n");
+    // //char * ti = "coucou";
+    mon_message *mes22 = malloc(sizeof(mon_message) + sizeof(t2)+1);
+    // printf("test2\n");
+    if( mes22 == NULL ) return -1;
+    // printf("test3\n");
+    mes22->type = (long) getpid(); /* comme type de message, on choisit l’identité
+    //                             * de l’expéditeur */
+    // printf("test4\n");
+    memmove( mes22->mtext, t2, sizeof(t2)+1) ; /* copier les deux int à envoyer */
+    // printf("test5\n");
+    //affichage_mon_mess(mes);
+    printf("\n");
+    int i2 = m_envoi(m,mes22,sizeof(t2)+1,O_NONBLOCK);
+    if(i2 == 0){
+        printf("Ok\n");
+        affichage_message(m);
+        printf("\n");
+        affichage_message(m1);
+        printf("\n");
+    }
+    char *t3 = "aurevoir";
+    // printf("test1\n");
+    // //char * ti = "coucou";
+    mon_message *mes3 = malloc(sizeof(mon_message) + sizeof(t3)+1);
+    // printf("test2\n");
+    if( mes3 == NULL ) return -1;
+    // printf("test3\n");
+    mes3->type = (long) getpid(); /* comme type de message, on choisit l’identité
+    //                             * de l’expéditeur */
+    // printf("test4\n");
+    memmove( mes3->mtext, t3, sizeof(t3)+1) ; /* copier les deux int à envoyer */
+    // printf("test5\n");
+    //affichage_mon_mess(mes);
+    printf("\n");
+    int i3 = m_envoi(m,mes3,sizeof(t3)+1,O_NONBLOCK);
+    if(i3 == 0){
+        printf("Ok \n");
+        affichage_message(m);
+        printf("\n");
+        affichage_message(m1);
+        printf("\n");
+    }
+
+
+
+
+
+    // for(int j=0;j<4;j++){
+    //     int i = m_envoi(m,mes,sizeof(t)+1,O_NONBLOCK);
+    //     if(i == 0){
+    //         printf("Ok %d\n",j);
+    //         affichage_message(m);
+    //         printf("\n");
+    //         affichage_message(m1);
+    //         printf("\n");
+    //     }
+    //     else if(i == -1 && errno == EAGAIN){
+    //         printf("file pleine, attendez un peu\n");
+    //     }
+    //     else {
+    //         printf("erreur\n");
+    //     }
+
+    // }
     
     mon_message *mes2=malloc(sizeof(mon_message) + sizeof(t)+1);
     printf("pid %d\n",getpid());
