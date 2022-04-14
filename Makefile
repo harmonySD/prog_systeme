@@ -1,7 +1,7 @@
 .PHONY=clean all
 CC=gcc
 CFLAGS= -g -Wall -pedantic -pthread
-LDLIBS=-lm
+LDLIBS=-lm -lrt
 
 ALL = m_file
 

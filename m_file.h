@@ -51,7 +51,8 @@ extern size_t m_capacite(MESSAGE *file);
 extern size_t m_nb(MESSAGE *file);
 extern void affichage_message(MESSAGE *m);
 extern void affichage_entete(enteteFile *e);
-extern void affichage_mon_mess(mon_message mm);
+extern void affichage_mon_mess(mon_message *mm);
+extern void suppression();
 
 
 #endif
