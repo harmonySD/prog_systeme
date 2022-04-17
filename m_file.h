@@ -30,7 +30,7 @@ typedef struct{
     int last;
     pthread_mutex_t mutex;
     int nb_proc_co;
-    mon_message tabMessage[];
+    mon_message *tabMessage;
 }enteteFile;
 
 typedef struct{
@@ -47,7 +47,7 @@ extern int initialiser_cond(pthread_cond_t *pcond);
 extern MESSAGE *m_connexion( const char *nom, int options, int nb, ...);//size_t nb_msg, size_t len_max, mode_t mode
 extern int m_deconnexion(MESSAGE *file);
 extern int m_destruction(const char *nom);
-extern int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag);
+extern int m_envoi(MESSAGE *file, mon_message *msg, size_t len, int msgflag);
 extern ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags);
 extern size_t m_message_len(MESSAGE *file);
 extern size_t m_capacite(MESSAGE *file);
