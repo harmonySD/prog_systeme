@@ -224,21 +224,21 @@ int m_envoi(MESSAGE *file, mon_message*msg,
             // printf("position %d\n",file->file->last);
            // printf("\n");
            
-            memcpy(file->file->tabMessage[file->file->last].mtext,msg->mtext,strlen(msg->mtext));
+            //memcpy(file->file->tabMessage[file->file->last].mtext,msg->mtext,strlen(msg->mtext));
             //file->file->tabMessage[file->file->last].type=msg->type;
             //memcpy(file->file->tabMessage[file->file->last].type,msg->type,sizeof(msg->type));
             // printf("longmax %zu\n",file->file->longMax);
             // printf("sizeof +len %lu\n", sizeof(msg)+len);
             //memmove(file->file->tabMessage+(file->file->last),msg,sizeof(*msg));
-            //memcpy(file->file->tabMessage+(file->file->last),m,sizeof(*m));
+            memcpy(file->file->tabMessage+(file->file->last),msg,sizeof(mon_message)+len);
             //file->file->tabMessage[file->file->last] =  *m;
             // printf("coucou4\n");
             // printf("taiiiiiille %zu\n",m_nb(file));
             file->file->last++;
 
-            printf("LES AUTRES 2 %s\n",file->file->tabMessage[0].mtext);
-            printf("LES AUTRES 2 %s\n",file->file->tabMessage[1].mtext);
-            printf("LES AUTRES 2 %s\n",file->file->tabMessage[2].mtext);
+            printf("LES AUTRES 2 %s %ld\n",file->file->tabMessage[0].mtext,file->file->tabMessage[0].type);
+            printf("LES AUTRES 2 %s %ld\n",file->file->tabMessage[1].mtext,file->file->tabMessage[1].type);
+            printf("LES AUTRES 2 %s %ld\n",file->file->tabMessage[2].mtext,file->file->tabMessage[2].type);
             
             msync(file->file, sizeof(file->file), MS_SYNC);
             // printf("coucou5\n");
@@ -400,19 +400,19 @@ int main(int argc, char const *argv[]){
     printf("\n\n");
 
      //int t[2] = {-12, 99};
-    char *t = "salou";
+    char t[] = "salou";
     printf("sizeof salut %lu\n",sizeof(t));
-    mon_message *mes = malloc(sizeof(mon_message) + sizeof(t)+1);
+    mon_message *mes = malloc(sizeof(mon_message) + sizeof(t));
     if( mes == NULL ) return -1;
 
     mes->type = (long) getpid(); /* comme type de message, on choisit l’identité
     //                             * de l’expéditeur */
-    
-    memmove( mes->mtext, t, sizeof(t)+1) ; /* copier les deux int à envoyer */
+    mes->len=sizeof(t);
+    memmove( mes->mtext, t, sizeof(t)) ; /* copier les deux int à envoyer */
     
     //affichage_mon_mess(mes);
     printf("\n");
-    int i = m_envoi(m,mes,sizeof(t)+1,O_NONBLOCK);
+    int i = m_envoi(m,mes,sizeof(t),O_NONBLOCK);
     if(i == 0){
         printf("Ok \n");
         affichage_message(m);
@@ -420,21 +420,22 @@ int main(int argc, char const *argv[]){
        //affichage_message(m1);
         //printf("\n");
     }
-    char *t2 = "bonj";
+    char t2[] = "bonj";
       printf("sizeof bonj %lu\n",sizeof(t2));
    
-    mon_message *mes22 = malloc(sizeof(mon_message) + sizeof(t2)+1);
+    mon_message *mes22 = malloc(sizeof(mon_message) + sizeof(t2));
     
     if( mes22 == NULL ) return -1;
    
     mes22->type = (long) getpid(); /* comme type de message, on choisit l’identité
     //                             * de l’expéditeur */
     // printf("test4\n");
-    memmove( mes22->mtext, t2, sizeof(t2)+1) ; /* copier les deux int à envoyer */
+    memmove( mes22->mtext, t2, sizeof(t2)) ; /* copier les deux int à envoyer */
+    mes22->len=sizeof(t2);
     // printf("test5\n");
     //affichage_mon_mess(mes);
     printf("\n");
-    int i2 = m_envoi(m,mes22,sizeof(t2)+1,O_NONBLOCK);
+    int i2 = m_envoi(m,mes22,sizeof(t2),O_NONBLOCK);
     if(i2 == 0){
         printf("Ok\n");
         affichage_message(m);
