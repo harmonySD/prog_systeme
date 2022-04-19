@@ -30,15 +30,13 @@ typedef struct{
     int first;
     int last;
     pthread_mutex_t mutex;
-    int nb_proc_co;
-   mon_message *tabMessage;
+    int nb_co;
 }enteteFile;
 
 typedef struct{
-    enteteFile *file;
+    enteteFile file;
     long type;
-    //mon_message *tabMessage;
-
+    char *messages;
 }MESSAGE;
 
 
