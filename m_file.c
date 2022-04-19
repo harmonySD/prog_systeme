@@ -56,21 +56,21 @@ size_t m_nb(MESSAGE *file){
 // connexion a une file de message ou creation
 MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg, size_t len_max, mode_t mode
         // nb = 0 ou 3 -> nb darguments en plus
-    char *m;
+    //char *m;
     printf("BAH\n");
     MESSAGE *mess;
     //option ne contient pas ocreat
     if((options == O_RDONLY)||(options == O_WRONLY)||(options == O_RDWR)){
         printf("MERDE\n");
-        mess=malloc(sizeof(MESSAGE));
+        //mess=malloc(sizeof(MESSAGE));
         // on ne cree pas la file on a que 2 arg 
         int d = shm_open(nom, options,S_IRUSR | S_IWUSR);
-        ftruncate(d,sizeof(enteteFile));
         if(d<0) return NULL;
         struct stat buf;
         int r =fstat(d,&buf);
         if(r== -1) return NULL;
-        m=mmap(NULL,buf.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,d,0);
+        mess=mmap(NULL,buf.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,d,0);
+        mess->type=buf.st_mode;
         mess->file.nb_co+=1;
         
     }else{
@@ -83,12 +83,11 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
         nb_msg = (size_t) va_arg(param, size_t);
         len_max = (size_t) va_arg(param, size_t);
         mode = (mode_t)va_arg(param, int);
-        mess=malloc(sizeof(MESSAGE)  +  ( sizeof(mon_message) + len_max) * nb_msg);
-        mess->type=mode; 
+        
         pthread_mutex_t mutex;
         int r=initialiser_mutex(&mutex);
         if(r ==-1) return NULL;
-        enteteFile entete={len_max,nb_msg,sizeof(MESSAGE),sizeof(MESSAGE),mutex};
+        enteteFile entete={len_max,nb_msg,sizeof(MESSAGE),sizeof(MESSAGE),mutex,1};
         r=pthread_mutex_lock(&entete.mutex);
         if(r == -1) return NULL;
         size_t taillem=sizeof(MESSAGE)+sizeof(mon_message)+len_max *nb_msg;
@@ -104,15 +103,21 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
             mess=mmap(NULL,taillem,PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
 
         }
-        msync(mess,taillem,MS_SYNC);
-        mess->file.nb_co=1;
-        r=pthread_mutex_unlock(&entete.mutex);
+
+         
+        
+        
+        
+        mess->type=mode;
         mess->file=entete;
+        //mess->messages=malloc(sizeof(mon_message)+len_max*nb_msg);
+        msync(&mess->file, sizeof(mess->file), MS_SYNC);
+        r=pthread_mutex_unlock(&entete.mutex);
         //memcpy(m,&entete,sizeof(enteteFile));
         va_end(param);
         
     }
-    mess->messages=m;
+    //mess->messages=m;
     return mess;
     
     
@@ -120,6 +125,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
 
 // deconnection de la file 
 int m_deconnexion(MESSAGE *file){
+    printf("iiii\n");
     enteteFile entete;
     memcpy(&entete,file->messages,sizeof(entete));
     if(munmap(file->messages, 
@@ -275,9 +281,9 @@ int m_destruction(const char *nom){
 // }
 
 void affichage_message(MESSAGE *m){
-    if(m==NULL) printf("null\n");
-    else if(m->messages==NULL && m->type==0){
-        printf("null\n");
+    if(m==NULL) printf("null la\n");
+    else if(m->type==0){
+        printf("null ici\n");
     }else{
         printf("type : %ld\n",m->type);
         affichage_entete(&m->file);

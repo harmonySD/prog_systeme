@@ -36,7 +36,7 @@ typedef struct{
 typedef struct{
     enteteFile file;
     long type;
-    char *messages;
+    char messages[];
 }MESSAGE;
 
 
