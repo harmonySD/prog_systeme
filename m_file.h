@@ -31,12 +31,12 @@ typedef struct{
     int last;
     pthread_mutex_t mutex;
     int nb_co;
+    char messages[];
 }enteteFile;
 
 typedef struct{
-    enteteFile file;
+    enteteFile *file;
     long type;
-    char messages[];
 }MESSAGE;
 
 
