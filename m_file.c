@@ -193,7 +193,7 @@ int m_envoi(MESSAGE *file, mon_message*msg,
             //mon_message *m = malloc(sizeof(msg));
             //memcpy(m,msg,sizeof(mon_message));
             ///memmove(m,msg,sizeof(msg));
-             printf(" M->TEXT %s\n", msg->mtext);
+            printf(" M->TEXT %s\n", msg->mtext);
             printf(" %lu\n",msg->type);
             
              
@@ -215,11 +215,13 @@ int m_envoi(MESSAGE *file, mon_message*msg,
             //file->file->messages[file->file->last] =  *m;
             // printf("coucou4\n");
             // printf("taiiiiiille %zu\n",m_nb(file));
-            file->file->last++;
+            file->file->last+=sizeof(mon_message)+len;
+            printf("sizeo mm %ld\n",sizeof(mon_message));
            // file->file->messages[file->file->last].type=0;
             // printf("LES AUTRES 2 %s %ld\n",file->file->messages[0]->mtext,file->file->messages[0]->type);
             // printf("LES AUTRES 2 %s %ld\n",file->file->messages[1]->mtext,file->file->messages[1]->type);
             // printf("LES AUTRES 2 %s %ld\n",file->file->messages[2]->mtext,file->file->messages[2]->type);
+            //TRADUIRE LE TYPE
             printf("mess %c\n",file->file->messages[0]);
              printf("mess %c\n",file->file->messages[1]);
               printf("mess %c\n",file->file->messages[2]);
@@ -229,6 +231,23 @@ int m_envoi(MESSAGE *file, mon_message*msg,
                   printf("mess %c\n",file->file->messages[6]);
                    printf("mess %c\n",file->file->messages[7]);
                     printf("mess %c\n",file->file->messages[8]);
+            printf("mess %c\n",file->file->messages[9]);
+            printf("mess %c\n",file->file->messages[10]);
+            printf("mess %c\n",file->file->messages[11]);
+            printf("mess %c\n",file->file->messages[12]);
+            printf("mess %c\n",file->file->messages[13]);
+            printf("mess %c\n",file->file->messages[14]);
+            printf("mess %c\n",file->file->messages[15]);
+            printf("mess %c\n",file->file->messages[16]);
+            printf("mess %c\n",file->file->messages[17]);
+            printf("mess %c\n",file->file->messages[18]);
+            printf("mess %c\n",file->file->messages[19]);
+            printf("mess %c\n",file->file->messages[20]);
+            printf("mess %c\n",file->file->messages[21]);
+            printf("mess %c\n",file->file->messages[22]);
+            printf("mess %c\n",file->file->messages[23]);
+
+            
 
             msync(file->file, sizeof(file->file), MS_SYNC);
             // printf("coucou5\n");
