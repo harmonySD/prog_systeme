@@ -150,34 +150,35 @@ int m_destruction(const char *nom){
 // envoie de message
 int m_envoi(MESSAGE *file, const void *msg, 
     size_t len, int msgflag){
-    if(msgflag == 0){
-        // faire avec signaux
 
+    if(m_nb(file) < file->file->capacite){
+
+        // printf("len : %zu\n",len);
+
+        // verifier len pas trop grand
+        if(file->file->longMax < len) return -1;
+
+        int r = pthread_mutex_lock(&file->file->mutex);
+        if(r == -1) return -1;
+        memcpy(file->file->messages+(file->file->last),msg,sizeof(mon_message)+len);
+        // memmove(file->file->messages+(file->file->last),msg,sizeof(mon_message)+len);
+
+        file->file->last += sizeof(mon_message)+file->file->longMax;
+        msync(file->file, sizeof(file->file), MS_SYNC);
+        r = pthread_mutex_unlock(&file->file->mutex);
+        if(r == -1) return -1;
 
     }
-    else if(msgflag==O_NONBLOCK){
-        if(m_nb(file) == file->file->capacite){
+    else {
+        if(msgflag == 0){
+            // faire avec signaux
+        }
+        else {
             errno = EAGAIN;
             return -1;
         }
-        else {
-            printf("len : %zu\n",len);
-
-            // verifier len pas trop grand
-            if(file->file->longMax < len) return -1;
-
-            int r = pthread_mutex_lock(&file->file->mutex);
-            if(r == -1) return -1;
-            memcpy(file->file->messages+(file->file->last),msg,sizeof(mon_message)+len);
-            // memmove(file->file->messages+(file->file->last),msg,sizeof(mon_message)+len);
-
-            file->file->last+=sizeof(mon_message)+file->file->longMax;
-            msync(file->file, sizeof(file->file), MS_SYNC);
-            r = pthread_mutex_unlock(&file->file->mutex);
-            if(r == -1) return -1;
-        }
     }
-    else return -1;
+
     // printf("coucoufin\n");
     return 0;
 }
@@ -207,39 +208,27 @@ void affichage_entete(enteteFile *e, size_t nb, size_t l){
         printf("capacite : %zu\n", e->capacite);
         printf("first : %d, last : %d \n", e->first, e->last);
         printf("nb_co : %d\n",e->nb_co);
-        int i=0;
-        printf("nbMess : %zu",nb);
-        for(int i=0;i<nb;i++){
-            int j = i * l;
-            char type[sizeof(long)];
-            char len[sizeof(long)];
-            while(j < sizeof(mon_message) + i*l){
-
-                j++;
-            }
-
-        }
-        while(i<e->last){
-            // if(e->messages[i]=='\0') printf("\0");
-            if(i%(sizeof(mon_message)+e->longMax) == 0) printf("\n");
-            printf("%c",e->messages[i]);
-            
-            i++;
-        }
+        printf("nbMess : %zu\n",nb);
         printf("\n");
-        // for(int i=0;i<nb;i++){
-        //     printf("typeMess : ");
-        //     for(int j=0;i<sizeof(mon_message);j++){
-        //         // if(e->messages[j+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
-        //             printf("%c",e->messages[j+(i*(sizeof(mon_message)+e->longMax))]);
-        //     }
-        //     printf("\nmessage : ");
-        //     for(int j=0;j<e->longMax;j++){
-        //         // if(e->messages[j+sizeof(mon_message)+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
-        //             printf("%c",e->messages[j+sizeof(mon_message)+(i*(sizeof(mon_message)+e->longMax))]);
-        //     }
-        //     printf("\n");
-        // }
+        for(int i=0;i<nb;i++){
+            printf("typeMess : ");
+            for(int j=0;j<sizeof(long);j++){
+                // if(e->messages[j+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
+                    printf("%c ",e->messages[j+(i*l)]);
+            }
+            printf(" lenMess : ");
+            for(int j=sizeof(long);j<sizeof(mon_message);j++){
+                // if(e->messages[j+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
+                    printf("%c ",e->messages[j+(i*l)]);
+            }
+            printf("\nmessage : ");
+            printf("%s\n",e->messages+sizeof(mon_message)+(i*l));
+            // for(int j=0;j<e->longMax;j++){
+            //     // if(e->messages[j+sizeof(mon_message)+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
+            //         printf("%c",e->messages[j+sizeof(mon_message)+(i*(sizeof(mon_message)+e->longMax))]);
+            // }
+            printf("\n");
+        }
     }
 }
 
@@ -297,48 +286,46 @@ int main(int argc, char const *argv[]){
     // int t[2] = {-12, 99};
     char t[] = "salut";
     printf("sizeof : %zu\n",sizeof(t));
-    // //char * ti = "coucou";
-    mon_message *mes = malloc(sizeof(mon_message) + strlen(t));
-    // printf("test2\n");
+    mon_message *mes = malloc(sizeof(mon_message) + sizeof(t));
     if( mes == NULL ) return -1;
-    // printf("test3\n");
     mes->type = (long) getpid(); /* comme type de message, on choisit l’identité
     //                             * de l’expéditeur */
-    mes->len = strlen(t);
-    // printf("test4\n");
-    memmove( mes->mtext, t, strlen(t)) ; /* copier les deux int à envoyer */
-    // printf("test5\n");
-    // affichage_mon_mess(mes);
-    // printf("\n");
-    int i = m_envoi(m,mes,strlen(t),O_NONBLOCK);
+    mes->len = sizeof(t);
+    printf("type : %zu\n",mes->type);
+    printf("len : %zu\n",mes->len);
+    memmove( mes->mtext, t, sizeof(t)) ; /* copier les deux int à envoyer */
+    int i = m_envoi(m,mes,sizeof(t),O_NONBLOCK);
     affichage_message(m);
-    printf("\n");
-    affichage_message(m1);
-    printf("\n\n");
+    // printf("\n");
+    // affichage_message(m1);
+    // printf("\n\n");
 
     char t2[] = "bonjour";
     mon_message *mes1 = malloc(sizeof(mon_message) + sizeof(t2));
     mes1->type = (long) getpid();
+    mes1->len = sizeof(t2);
     memmove( mes1->mtext, t2, sizeof(t2)) ;
     i = m_envoi(m,mes1,sizeof(t2),O_NONBLOCK);
     affichage_message(m);
     printf("\n");
-    affichage_message(m1);
-    printf("\n\n");
+    // affichage_message(m1);
+    // printf("\n\n");
 
     char t3[] = "coucou";
     mon_message *mes2 = malloc(sizeof(mon_message) + sizeof(t3));
     mes2->type = (long) getpid();
+    mes2->len = sizeof(t3);
     memmove( mes2->mtext, t3, sizeof(t3)) ;
     i = m_envoi(m,mes2,sizeof(t3),O_NONBLOCK);
     affichage_message(m);
     printf("\n");
     affichage_message(m1);
-    printf("\n\n");
+    // printf("\n\n");
 
     char t4[] = "aurevoir";
     mon_message *mes3 = malloc(sizeof(mon_message) + sizeof(t4));
     mes3->type = (long) getpid();
+    mes3->len = sizeof(t4);
     memmove( mes3->mtext, t4, sizeof(t4)) ;
     // for(int j=0;j<4;j++){
         i = m_envoi(m,mes3,sizeof(t4),O_NONBLOCK);
