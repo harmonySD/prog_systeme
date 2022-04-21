@@ -172,6 +172,10 @@ int m_envoi(MESSAGE *file, const void *msg,
     else {
         if(msgflag == 0){
             // faire avec signaux
+            while(m_nb(file)>= file->file->capacite){
+                sleep(5);
+            }
+            return m_envoi(file,msg,len,msgflag);
         }
         else {
             errno = EAGAIN;
@@ -211,23 +215,33 @@ void affichage_entete(enteteFile *e, size_t nb, size_t l){
         printf("nbMess : %zu\n",nb);
         printf("\n");
         for(int i=0;i<nb;i++){
-            printf("typeMess : ");
-            for(int j=0;j<sizeof(long);j++){
-                // if(e->messages[j+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
-                    printf("%c ",e->messages[j+(i*l)]);
+            
+            char buf[l];
+            for (int j=0;j<l;j++){
+                buf[j] = e->messages[j+ i*l];
             }
-            printf(" lenMess : ");
-            for(int j=sizeof(long);j<sizeof(mon_message);j++){
-                // if(e->messages[j+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
-                    printf("%c ",e->messages[j+(i*l)]);
-            }
-            printf("\nmessage : ");
-            printf("%s\n",e->messages+sizeof(mon_message)+(i*l));
-            // for(int j=0;j<e->longMax;j++){
-            //     // if(e->messages[j+sizeof(mon_message)+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
-            //         printf("%c",e->messages[j+sizeof(mon_message)+(i*(sizeof(mon_message)+e->longMax))]);
+
+            mon_message * mess = (mon_message*)buf;
+            printf("typeMess : %zu, lenMess : %zu\n",mess->type, mess->len);
+            printf("mess : %s\n", mess->mtext);
+
+            // cast en mon_message
+            // for(int j=0;j<sizeof(long);j++){
+            //     // if(e->messages[j+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
+            //         printf("%c ",e->messages[j+(i*l)]);
             // }
-            printf("\n");
+            // printf(" lenMess : ");
+            // for(int j=sizeof(long);j<sizeof(mon_message);j++){
+            //     // if(e->messages[j+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
+            //         printf("%c ",e->messages[j+(i*l)]);
+            // }
+            // printf("\nmessage : ");
+            // printf("%s\n",e->messages+sizeof(mon_message)+(i*l));
+            // // for(int j=0;j<e->longMax;j++){
+            // //     // if(e->messages[j+sizeof(mon_message)+(i*(sizeof(mon_message)+e->longMax))]!='\0') 
+            // //         printf("%c",e->messages[j+sizeof(mon_message)+(i*(sizeof(mon_message)+e->longMax))]);
+            // // }
+            // printf("\n");
         }
     }
 }
@@ -316,7 +330,7 @@ int main(int argc, char const *argv[]){
     mes2->type = (long) getpid();
     mes2->len = sizeof(t3);
     memmove( mes2->mtext, t3, sizeof(t3)) ;
-    i = m_envoi(m,mes2,sizeof(t3),O_NONBLOCK);
+    i = m_envoi(m,mes2,sizeof(t3),0);
     affichage_message(m);
     printf("\n");
     affichage_message(m1);
