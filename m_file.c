@@ -163,7 +163,7 @@ void suppression(MESSAGE *file, int pos){
     int r = pthread_mutex_lock(&file->file->mutex);
     if(r == -1) exit(0);
     int last=0;
-    for(int i=pos;i<m_nb(file)-1; i++){
+    for(int i=pos;i<m_nb(file); i++){
         //pour chaque mon_message
         size_t l=m_size_messages(file);
         for (int j=0;j<l;j++){
@@ -172,6 +172,7 @@ void suppression(MESSAGE *file, int pos){
             file->file->messages[j+i*l]= file->file->messages[j+(i+1)*l];
         }
     }
+    file->file->last-=m_size_messages(file);
     msync(file->file, sizeof(file->file), MS_SYNC);
     r = pthread_mutex_unlock(&file->file->mutex);
 }
@@ -200,10 +201,10 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                 msg=mess;
                 suppression(file,0);
                 return(mess->len);
-                //VERIFIER AUTRES CAS 
             }else if(type>0){
+                printf(">0\n");
                 //lire le premier message dont le type est type
-                for(int i=0;i<m_nb(file)-1; i++){
+                for(int i=0;i<m_nb(file); i++){
                     //pour chaque mon_message
                     char buf[l];
                     for (int j=0;j<l;j++){
@@ -221,15 +222,16 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                 errno = EAGAIN;
                 return -1;
             }else if(type<0){
+                printf("<0\n");
                 //lire le premier message dont type inferier ou egal a |type|
-                for(int i=0;i<m_nb(file)-1; i++){
+                for(int i=0;i<m_nb(file); i++){
                     //pour chaque mon_message
                     char buf[l];
                     for (int j=0;j<l;j++){
                         buf[j] = file->file->messages[j+ i*l];
                     }
                     mon_message * mess = (mon_message*)buf;
-                    if(mess->type<=type){
+                    if(mess->type<=labs(type)){
                         msg=mess;
                         suppression(file,i);
                         printf("typeMess : %zu, lenMess : %zu\n",mess->type, mess->len);
@@ -243,8 +245,17 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
             
         }
     }else{
-        //on est dans le cas de la lecture bloquante
-
+        if(flags == 0){
+            // faire avec signaux
+            while(m_nb(file)==0){
+                sleep(5);
+            }
+            return m_reception(file,msg,len,type,flags);
+        }
+        else {
+            errno = EAGAIN;
+            return -1;
+        }
     }
     return -1;
 }

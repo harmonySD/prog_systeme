@@ -98,12 +98,49 @@ int main(int argc, char const *argv[]){
             printf("Ok recu %d\n",p1);
             //affichage_mon_mess(mess);
     }
+    printf("*****************\n");
+    affichage_message(m);
+    printf("*****************\n");
     mon_message *mess1=malloc(sizeof(mon_message) + len_mess);
-    int p2= m_reception(m,mess1,len_mess,0,O_NONBLOCK);
+    int p2= m_reception(m,mess1,len_mess,-getpid(),O_NONBLOCK);
     if(p2!= -1){
             printf("Ok recu %d\n",p2);
             //affichage_mon_mess(mess);
     }
+    printf("*****************\n");
+    affichage_message(m);
+    printf("*****************\n");
+    mon_message *mess2=malloc(sizeof(mon_message) + len_mess);
+    int p3= m_reception(m,mess2,len_mess,getpid(),O_NONBLOCK);
+    if(p3!= -1){
+            printf("Ok recu %d\n",p3);
+            //affichage_mon_mess(mess);
+    }
+    printf("*****************\n");
+    affichage_message(m);
+    printf("*****************\n");
+
+    char t5[] = "aurevoir";
+    mon_message *mes5 = malloc(sizeof(mon_message) + sizeof(t5));
+    mes5->type = (long) getpid();
+    mes5->len = strlen(t5);
+    memmove( mes5->mtext, t5, sizeof(t5)) ;
+    i = m_envoi(m,mes5,sizeof(t5),O_NONBLOCK);
+    if(i == 0){
+        printf("Ok %d\n",i);
+        affichage_message(m);
+        printf("\n");
+        affichage_message(m1);
+        printf("\n");
+    }
+    else if(i == -1 && errno == EAGAIN){
+        printf("file pleine, attendez un peu\n");
+    }
+    else {
+        printf("erreur\n");
+    }
+
+
 
 
 

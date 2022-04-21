@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <math.h>
 
 #ifndef MFILE_H
 #define MFILE_H
