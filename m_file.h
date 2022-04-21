@@ -20,8 +20,10 @@
 
 typedef struct{
     long type;
+    long len;
     char mtext[];
 }mon_message;
+
 
 typedef struct{
     size_t longMax;
@@ -29,14 +31,16 @@ typedef struct{
     int first;
     int last;
     pthread_mutex_t mutex;
-    int nb_proc_co;
-    mon_message tabMessage[];
+    int nb_co;
+    char messages[];
 }enteteFile;
 
+
 typedef struct{
-    long type;
     enteteFile *file;
+    long type;
 }MESSAGE;
+
 
 
 
@@ -53,7 +57,7 @@ extern size_t m_message_len(MESSAGE *file);
 extern size_t m_capacite(MESSAGE *file);
 extern size_t m_nb(MESSAGE *file);
 extern void affichage_message(MESSAGE *m);
-extern void affichage_entete(enteteFile *e);
+extern void affichage_entete(enteteFile *e, size_t nb, size_t l);
 extern void affichage_mon_mess(mon_message *mm);
 
 
