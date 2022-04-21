@@ -159,16 +159,12 @@ int m_envoi(MESSAGE *file, const void *msg,
 
 //supprimer element a la position i et decaler les autres
 void suppression(MESSAGE *file, int pos){
-    printf("%d\n",pos);
     int r = pthread_mutex_lock(&file->file->mutex);
     if(r == -1) exit(0);
-    int last=0;
     for(int i=pos;i<m_nb(file); i++){
         //pour chaque mon_message
         size_t l=m_size_messages(file);
         for (int j=0;j<l;j++){
-            //printf("%lu\n",j+i*l);
-            //recuperer tout les octet dans le buf
             file->file->messages[j+i*l]= file->file->messages[j+(i+1)*l];
         }
     }
@@ -180,7 +176,6 @@ void suppression(MESSAGE *file, int pos){
 // lire message 
 ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
     if(flags==O_NONBLOCK){
-        printf("bouh\n");
         if(len< m_message_len(file)){
             errno = EMSGSIZE;
             return -1;
@@ -190,19 +185,15 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
         }else{
             size_t l=m_size_messages(file);
             if(type== 0){
-                printf("zero ok\n");
                 char buf[l];
                 for (int j=0;j<l;j++){
                     buf[j] = file->file->messages[j];
                 }
                 mon_message * mess = (mon_message*)buf;
-                printf("typeMess : %zu, lenMess : %zu\n",mess->type, mess->len);
-                printf("mess : %s\n", mess->mtext);
                 msg=mess;
                 suppression(file,0);
                 return(mess->len);
             }else if(type>0){
-                printf(">0\n");
                 //lire le premier message dont le type est type
                 for(int i=0;i<m_nb(file); i++){
                     //pour chaque mon_message
@@ -214,15 +205,12 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     if(mess->type==type){
                         msg=mess;
                         suppression(file,i);
-                        printf("typeMess : %zu, lenMess : %zu\n",mess->type, mess->len);
-                        printf("mess : %s\n", mess->mtext); 
                         return(mess->len);
                     }
                 }
                 errno = EAGAIN;
                 return -1;
             }else if(type<0){
-                printf("<0\n");
                 //lire le premier message dont type inferier ou egal a |type|
                 for(int i=0;i<m_nb(file); i++){
                     //pour chaque mon_message
@@ -234,8 +222,6 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     if(mess->type<=labs(type)){
                         msg=mess;
                         suppression(file,i);
-                        printf("typeMess : %zu, lenMess : %zu\n",mess->type, mess->len);
-                        printf("mess : %s\n", mess->mtext); 
                         return(mess->len);
                     } 
                 }
