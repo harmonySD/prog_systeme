@@ -1,22 +1,27 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/wait.h>
-#include <errno.h>
-#include <string.h>
 #include <sys/mman.h>
+
+#include <fcntl.h>
 #include <pthread.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdarg.h>
+#include <errno.h>
+#include <math.h>
 
 #ifndef MFILE_H
 #define MFILE_H
 
 typedef struct{
     long type;
+    long len;
     char mtext[];
 }mon_message;
 
@@ -26,13 +31,12 @@ typedef struct{
     int first;
     int last;
     pthread_mutex_t mutex;
-    mon_message *tabMessage;
-    int nb_proc_co;
+    char messages[];
 }enteteFile;
 
 typedef struct{
-    long type;
     enteteFile *file;
+    long type;
 }MESSAGE;
 
 
@@ -50,8 +54,8 @@ extern size_t m_message_len(MESSAGE *file);
 extern size_t m_capacite(MESSAGE *file);
 extern size_t m_nb(MESSAGE *file);
 extern void affichage_message(MESSAGE *m);
-extern void affichage_entete(enteteFile *e);
-extern void affichage_mon_mess(mon_message mm);
+extern void affichage_entete(enteteFile *e, size_t nb, size_t l);
+extern void affichage_mon_mess(mon_message *mm);
 
 
 #endif
