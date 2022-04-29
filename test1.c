@@ -1,21 +1,10 @@
 #include "m_file.h"
+
 int main(int argc, char const *argv[]){
     // /dev/shm
 
-    // char n = 'a'; 
-    // for(int i=0;i<26;i++){
-    //     // printf("n:%c ",n);
-    //     char nom[2];
-    //     nom[0] = '/';
-    //     nom[1] = n;
-    //     // printf("nom:%s\n",nom);
-    //     printf("enlever %s:%d\n",nom,enlever(nom)); 
-    //     n++;
-    // }
-    // printf("\n\n");
-
     char * path = "/a";
-    shm_unlink(path);
+    // shm_unlink(path);
 
     MESSAGE* m = m_connexion(path, O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
     
