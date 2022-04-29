@@ -15,6 +15,19 @@ int main(int argc, char const *argv[]){
     affichage_message(m1);
     printf("\n\n");
 
+
+    int enre = enregistrement(m, SIGUSR1, getpid());
+    printf("enregistrement : %d\n",enre);
+    affichage_message(m);
+    printf("\n");
+    affichage_message(m1);
+    printf("\n\n");
+
+    // int enregistrement(MESSAGE *file, int signal, long type);
+
+    printf("**********************************************************************\n");
+    
+
     // int t[2] = {-12, 99};
     char t[] = "salut";
     printf("sizeof : %zu\n",sizeof(t));
@@ -34,8 +47,8 @@ int main(int argc, char const *argv[]){
     int i = m_envoi(m,mes,strlen(t),O_NONBLOCK);
     affichage_message(m);
     printf("\n");
-    affichage_message(m1);
-    printf("\n\n");
+    // affichage_message(m1);
+    // printf("\n\n");
 
     char t2[] = "bonjour";
     mon_message *mes1 = malloc(sizeof(mon_message) + sizeof(t2));
@@ -45,8 +58,8 @@ int main(int argc, char const *argv[]){
     i = m_envoi(m,mes1,sizeof(t2),O_NONBLOCK);
     affichage_message(m);
     printf("\n");
-    affichage_message(m1);
-    printf("\n\n");
+    // affichage_message(m1);
+    // printf("\n\n");
 
     char t3[] = "coucou";
     mon_message *mes2 = malloc(sizeof(mon_message) + sizeof(t3));
@@ -56,8 +69,8 @@ int main(int argc, char const *argv[]){
     i = m_envoi(m,mes2,sizeof(t3),O_NONBLOCK);
     affichage_message(m);
     printf("\n");
-    affichage_message(m1);
-    printf("\n\n");
+    // affichage_message(m1);
+    // printf("\n\n");
 
     char t4[] = "aurevoir";
     mon_message *mes3 = malloc(sizeof(mon_message) + sizeof(t4));
@@ -69,8 +82,8 @@ int main(int argc, char const *argv[]){
         printf("Ok %d\n",i);
         affichage_message(m);
         printf("\n");
-        affichage_message(m1);
-        printf("\n");
+        // affichage_message(m1);
+        // printf("\n");
     }
     else if(i == -1 && errno == EAGAIN){
         printf("file pleine, attendez un peu\n");
@@ -79,9 +92,17 @@ int main(int argc, char const *argv[]){
         printf("erreur\n");
     }
 
+    // printf("**********************************************************************\n");
+    // int enre = enregistrement(m, SIGUSR1, getpid());
+    // printf("enregistrement : %d\n",enre);
+    // affichage_message(m);
+    // printf("\n");
+
+    // int enregistrement(MESSAGE *file, int signal, long type);
+
     printf("**********************************************************************\n");
     int len_mess=300;
-    mon_message *mess=malloc(sizeof(mon_message) +len_mess);
+    mon_message *mess=malloc(sizeof(mon_message) + len_mess);
     int p1= m_reception(m,mess,len_mess,0,O_NONBLOCK);
     if(p1!= -1){
             printf("Ok recu %d\n",p1);
@@ -119,8 +140,8 @@ int main(int argc, char const *argv[]){
         printf("Ok %d\n",i);
         affichage_message(m);
         printf("\n");
-        affichage_message(m1);
-        printf("\n");
+        // affichage_message(m1);
+        // printf("\n");
     }
     else if(i == -1 && errno == EAGAIN){
         printf("file pleine, attendez un peu\n");
@@ -129,10 +150,16 @@ int main(int argc, char const *argv[]){
         printf("erreur\n");
     }
 
-
-
-
-
+    int desenre = desenregistrement(m);
+    printf("deenregistrement : %d\n",desenre);
+    affichage_message(m);
+    printf("\n");
+    affichage_message(m1);
+    printf("\n\n");
+    desenre = desenregistrement(m);
+    printf("deenregistrement : %d\n",desenre);
+    affichage_message(m);
+    printf("\n");
  
     
     
@@ -142,7 +169,7 @@ int main(int argc, char const *argv[]){
     // affichage_message(m);
     // affichage_message(m1);
     // printf("destruc %d\n",m_destruction(path));
-    printf("deco %d\n",m_deconnexion(m1));
+    // printf("deco %d\n",m_deconnexion(m1));
     printf("destruc %d\n",m_destruction(path));
     // MESSAGE *m2 = m_connexion(path,O_RDWR, 0);
     // affichage_message(m2);

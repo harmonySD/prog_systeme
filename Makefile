@@ -1,7 +1,7 @@
 .PHONY=clean all
 CC=gcc
 CFLAGS = -g -Wall -pedantic  
-LDLIBS = -pthread -lm
+LDLIBS = -pthread -lm -lrt
 
 ALL = test1
 

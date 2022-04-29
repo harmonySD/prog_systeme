@@ -54,7 +54,7 @@ size_t m_nb(MESSAGE *file){
     return (file->file->last)/m_size_messages(file);
 }
 size_t m_nbSignal(MESSAGE *file){
-    return (file->signal->lastSignal)/sizeof(signalEnregis);
+    return (file->file->lastSignal)/sizeof(signalEnregis);
 }
 
 size_t m_size_messages(MESSAGE *file){
@@ -62,11 +62,11 @@ size_t m_size_messages(MESSAGE *file){
 }
 
 // connexion a une file de message ou creation
-MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg, size_t len_max, mode_t mode
+MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ 
+    //size_t nb_msg, size_t len_max, mode_t mode
     // nb = 0 ou 3 -> nb darguments en plus
     MESSAGE *mess=malloc(sizeof(MESSAGE));
     enteteFile *entete;
-    signalTab *signal;
     //option ne contient pas ocreat
     if((options == O_RDONLY)||(options == O_WRONLY)||(options == O_RDWR)){
         // on ne cree pas la file on a que 2 arg 
@@ -79,29 +79,27 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
         mess->type=buf.st_mode;
         mess->file=entete;        
     }else{
-        printf("hey\n");
+        // printf("hey\n");
         va_list param;
         va_start(param, nb);
         size_t nb_msg;
         size_t len_max;
         mode_t mode;
-        size_t nb_signal;
         nb_msg = (size_t) va_arg(param, size_t);
         len_max = (size_t) va_arg(param, size_t);
         mode = (mode_t)va_arg(param, int);
-        nb_signal = (size_t) va_arg(param, size_t);
-        size_t tailleent = sizeof(enteteFile) + (sizeof(mon_message)+len_max)*nb_msg;
-        size_t tailleSig = sizeof(signalEnregis)*nb_signal;
+        size_t tailleent = sizeof(enteteFile) + (sizeof(mon_message)+len_max)*nb_msg
+                    +sizeof(signalEnregis)*NBSIG;
         if(nom == NULL){
+            printf("anonyme\n");
             //file ano
             entete = mmap(NULL, tailleent, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS,-1,0);
-            signal = mmap(NULL, tailleSig, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS,-1,tailleent);
         }else{
+            printf("nom\n");
             int d=shm_open(nom, options, mode);
             ftruncate(d,sizeof(enteteFile));
             if(d<0) return NULL;
             entete = mmap(NULL, tailleent, PROT_READ|PROT_WRITE, MAP_SHARED,d,0);
-            signal = mmap(NULL, tailleSig,  PROT_READ|PROT_WRITE, MAP_SHARED,d,tailleent);
         }
         int r=initialiser_mutex(&entete->mutex);
         if(r ==-1) return NULL;
@@ -110,14 +108,13 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
         entete->capacite = nb_msg;
         entete->first = 0;
         entete->last = 0;
+        entete->lastSignal = 0;
         entete->longMax = len_max;
-        signal->capaciteSignal = nb_signal;
-        signal->lastSignal = 0;
         mess->type = mode;
         mess->file = entete;
-        mess->signal = signal;
         msync(&mess->file, sizeof(mess->file), MS_SYNC);
         r=pthread_mutex_unlock(&entete->mutex);
+        if(r == -1) return NULL;
         va_end(param);
     }
     return mess;   
@@ -127,7 +124,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ //size_t nb_msg
 int m_deconnexion(MESSAGE *file){
     if(munmap(file->file, 
         sizeof(enteteFile)+ m_size_messages(file) *file->file->capacite 
-            + sizeof(signalEnregis))==-1)
+            + sizeof(signalEnregis)*NBSIG)==-1)
         return -1;    
     return 0;
 }
@@ -188,23 +185,23 @@ void suppressionMess(MESSAGE *file, int pos){
 // lire message 
 ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
     if(flags==O_NONBLOCK){
-        if(len< m_message_len(file)){
+        if(len < m_message_len(file)){
             errno = EMSGSIZE;
             return -1;
         }else if(m_nb(file)==0){
             errno = EAGAIN;
             return -1;
         }else{
-            size_t l=m_size_messages(file);
+            size_t l = m_size_messages(file);
             if(type== 0){
                 char buf[l];
                 for (int j=0;j<l;j++){
                     buf[j] = file->file->messages[j];
                 }
                 mon_message * mess = (mon_message*)buf;
-                msg=mess;
-                suppression(file,0);
-                return(mess->len);
+                msg = mess;
+                suppressionMess(file,0);
+                return (mess->len);
             }else if(type>0){
                 //lire le premier message dont le type est type
                 for(int i=0;i<m_nb(file); i++){
@@ -216,8 +213,8 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     mon_message * mess = (mon_message*)buf;
                     if(mess->type==type){
                         msg=mess;
-                        suppression(file,i);
-                        return(mess->len);
+                        suppressionMess(file,i);
+                        return (mess->len);
                     }
                 }
                 errno = EAGAIN;
@@ -233,8 +230,8 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     mon_message * mess = (mon_message*)buf;
                     if(mess->type<=labs(type)){
                         msg=mess;
-                        suppression(file,i);
-                        return(mess->len);
+                        suppressionMess(file,i);
+                        return (mess->len);
                     } 
                 }
                 errno = EAGAIN;
@@ -259,7 +256,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
 }
 
 int enregistrement(MESSAGE *file, int signal, long type){
-    if(m_nbSignal(file) < file->signal->capaciteSignal){
+    if(m_nbSignal(file) < NBSIG){
         signalEnregis *sig = malloc(sizeof(signalEnregis));
         sig->pid = getpid();
         sig->typeMess = type;
@@ -267,8 +264,8 @@ int enregistrement(MESSAGE *file, int signal, long type){
 
         int r = pthread_mutex_lock(&file->file->mutex);
         if(r == -1) return -1;
-        memcpy(file->signal->enregistrement+(file->signal->lastSignal),sig,sizeof(signalEnregis));
-        file->signal->lastSignal += sizeof(signalEnregis);
+        memcpy(file->file->enregistrement+(file->file->lastSignal),sig,sizeof(signalEnregis));
+        file->file->lastSignal += sizeof(signalEnregis);
         msync(file->file, sizeof(file->file), MS_SYNC);
         r = pthread_mutex_unlock(&file->file->mutex);
         if(r == -1) return -1;
@@ -288,10 +285,10 @@ void suppressionSig(MESSAGE *file, int pos){
         //pour chaque mon_message
         size_t l = sizeof(signalEnregis);
         for (int j=0;j<l;j++){
-            file->signal->enregistrement[j+i*l]= file->signal->enregistrement[j+(i+1)*l];
+            file->file->enregistrement[j+i*l]= file->file->enregistrement[j+(i+1)*l];
         }
     }
-    file->signal->lastSignal -= sizeof(signalEnregis);
+    file->file->lastSignal -= sizeof(signalEnregis);
     msync(file->file, sizeof(file->file), MS_SYNC);
     r = pthread_mutex_unlock(&file->file->mutex);
 }
@@ -304,11 +301,11 @@ int desenregistrement(MESSAGE *file){
         //pour chaque signalEnregis
         char buf[l];
         for (int j=0;j<l;j++){
-            buf[j] = file->signal->enregistrement[j+ i*l];
+            buf[j] = file->file->enregistrement[j+ i*l];
         }
         signalEnregis * sig = (signalEnregis*)buf;
         if(sig->pid == getpid()){
-            suppression(file,i);
+            suppressionSig(file,i);
             return 0;
         }
     }
@@ -320,23 +317,53 @@ int desenregistrement(MESSAGE *file){
 void affichage_message(MESSAGE *m){
     if(m==NULL) printf("null la\n");
     else{
+        printf("\n-----DEBUT-----\n");
         printf("type : %ld\n",m->type);
-        affichage_entete(m->file,m_nb(m),m_size_messages(m));
+        affichage_entete(m->file,m_nb(m),m_size_messages(m), m_nbSignal(m));
+        // affichage_signal(m->file, m_nbSignal(m));
     } 
 }
-void affichage_entete(enteteFile *e, size_t nb, size_t l){
+void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS){
     printf("long max : %zu\n",e->longMax);
     printf("capacite : %zu\n", e->capacite);
     printf("first : %d, last : %d \n", e->first, e->last);
-    printf("nbMess : %zu\n",nb);
+    printf("nbMess : %zu\n",nbM);
+    printf("nbSig : %zu\n",nbS);
     printf("\n");
-    for(int i=0;i<nb;i++){
-        char buf[l];
-        for (int j=0;j<l;j++){
-            buf[j] = e->messages[j+ i*l];
+    size_t ls = sizeof(signalEnregis);
+    for(int i=0;i<nbS;i++){
+        char buf[ls];
+        for (int j=0;j<ls;j++){
+            buf[j] = e->enregistrement[j+ i*ls];
+        }
+        signalEnregis * sig = (signalEnregis*)buf;
+        printf("pid : %zu, typeMess : %zu, typeSignal : %u\n",sig->pid,sig->typeMess, sig->typeSignal);
+    }
+
+    for(int i=0;i<nbM;i++){
+        char buf[lm];
+        for (int j=0;j<lm;j++){
+            buf[j] = e->messages[j+ i*lm];
         }
         mon_message * mess = (mon_message*)buf;
         printf("typeMess : %zu, lenMess : %zu\n",mess->type, mess->len);
         printf("mess : %s\n", mess->mtext); 
     }
+    printf("-----FIN-----\n");
 }
+
+// void affichage_signal(signalTab *s, size_t nb){
+//     printf("capaciteSignal : %zu\n", s->capaciteSignal);
+//     printf("lastSignal : %d \n", s->lastSignal);
+//     printf("nbSignal : %zu\n",nb);
+//     printf("\n");
+//     size_t l = sizeof(signalEnregis);
+//     for(int i=0;i<nb;i++){
+//         char buf[l];
+//         for (int j=0;j<l;j++){
+//             buf[j] = s->enregistrement[j+ i*l];
+//         }
+//         signalEnregis * sig = (signalEnregis*)buf;
+//         printf("pid : %zu, typeMess : %zu, typeSignal : %u\n",sig->pid,sig->typeMess, sig->typeSignal);
+//     }
+// }
