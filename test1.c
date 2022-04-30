@@ -4,7 +4,8 @@ int main(int argc, char const *argv[]){
     // /dev/shm
 
     char * path = "/a";
-    // shm_unlink(path);
+    shm_unlink(path);
+    printf("pid : %d\n",getpid());
 
     MESSAGE* m = m_connexion(path, O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
     
@@ -15,21 +16,23 @@ int main(int argc, char const *argv[]){
     affichage_message(m1);
     printf("\n\n");
 
+    int signal = SIGHUP;
     //pour signaux
     struct sigaction  str = {0};
     str.sa_handler=handler;
+    sigaction(signal,&str,NULL);
     sigaction(SIGUSR1,&str,NULL);
+    sigaction(SIGUSR2,&str,NULL);
     
-    int enre = enregistrement(m, SIGUSR1, getpid());
+    int enre = enregistrement(m, signal, getpid());
     printf("enregistrement : %d\n",enre);
     affichage_message(m);
     printf("\n");
     affichage_message(m1);
     printf("\n\n");
 
-    // int enregistrement(MESSAGE *file, int signal, long type);
 
-    printf("**********************************************************************\n");
+    printf("********************************************************\n");
     
 
     // int t[2] = {-12, 99};
@@ -96,6 +99,7 @@ int main(int argc, char const *argv[]){
         printf("erreur\n");
     }
 
+
     // printf("**********************************************************************\n");
     // int enre = enregistrement(m, SIGUSR1, getpid());
     // printf("enregistrement : %d\n",enre);
@@ -104,7 +108,7 @@ int main(int argc, char const *argv[]){
 
     // int enregistrement(MESSAGE *file, int signal, long type);
 
-    printf("**********************************************************************\n");
+    printf("***********************************************************\n");
     int len_mess=300;
     mon_message *mess=malloc(sizeof(mon_message) + len_mess);
     int p1= m_reception(m,mess,len_mess,0,O_NONBLOCK);
@@ -121,8 +125,10 @@ int main(int argc, char const *argv[]){
             printf("Ok recu %d\n",p2);
             //affichage_mon_mess(mess);
     }
-    printf("*****************\n");
+    // sleep(15);
+    printf("SLEEP*****************SLEEP\n");
     affichage_message(m);
+
     printf("*****************\n");
     mon_message *mess2=malloc(sizeof(mon_message) + len_mess);
     int p3= m_reception(m,mess2,len_mess,getpid(),O_NONBLOCK);
@@ -154,16 +160,16 @@ int main(int argc, char const *argv[]){
         printf("erreur\n");
     }
 
-    int desenre = desenregistrement(m);
-    printf("deenregistrement : %d\n",desenre);
-    affichage_message(m);
-    printf("\n");
-    affichage_message(m1);
-    printf("\n\n");
-    desenre = desenregistrement(m);
-    printf("deenregistrement : %d\n",desenre);
-    affichage_message(m);
-    printf("\n");
+    // int desenre = desenregistrement(m);
+    // printf("deenregistrement : %d\n",desenre);
+    // affichage_message(m);
+    // printf("\n");
+    // affichage_message(m1);
+    // printf("\n\n");
+    // desenre = desenregistrement(m);
+    // printf("deenregistrement : %d\n",desenre);
+    // affichage_message(m);
+    // printf("\n");
  
     
     

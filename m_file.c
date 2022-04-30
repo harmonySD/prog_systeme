@@ -18,8 +18,19 @@
 #include "m_file.h"
 
 void handler(int sig){
-    char *txt="*notification* Message arrivee !\n";
-    write(1,txt,strlen(txt));    
+    if (sig == SIGUSR1) {
+        char *txt="De nouveau de la place !\n";
+        write(1,txt,strlen(txt));  
+    }
+    else if(sig == SIGUSR2){
+        char *txt="Arrivee dun message !\n";
+        write(1,txt,strlen(txt));
+    }
+    else {
+        char *txt="*notification* Message arrivee !\n";
+        write(1,txt,strlen(txt));
+    }
+        
 }
 
 // initialiser mutex et cond
@@ -171,8 +182,7 @@ int m_envoi(MESSAGE *file, const void *msg,
         }
     }
 
-
-    //signaux a envoyer SSI aucun proc suspendu en attente de ce mssages
+    //signaux a envoyer SSI aucun proc suspendu en attente de ce message
     size_t l = m_size_signal(file);
     for(int i=0;i<m_nbSignal(file); i++){
      //pour chaque signalEnrigistre
@@ -234,7 +244,9 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                 msg = mess;
                 suppressionMess(file,0);
                 if(debloque!=0){
+                    // printf("type=0\n");
                     //envoie signal
+                    kill(0,SIGHUP);
                 }
                 return (mess->len);
             }else if(type>0){
@@ -251,6 +263,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                         suppressionMess(file,i);
                         if(debloque!=0){
                             //envoie signal
+                            kill(0,SIGHUP);
                         }
                         return (mess->len);
                     }
@@ -271,6 +284,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                         suppressionMess(file,i);
                         if(debloque!=0){
                             //envoie signal
+                            kill(0,SIGHUP);
                         }
                         return (mess->len);
                     } 
