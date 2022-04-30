@@ -160,7 +160,8 @@ int m_envoi(MESSAGE *file, const void *msg,
     else {
         if(msgflag == 0){
             while(m_nb(file)>= file->file->capacite){
-                sleep(5);
+                //sleep(5);
+                pause();
             }
             return m_envoi(file,msg,len,msgflag);
         }
@@ -218,6 +219,11 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
             errno = EAGAIN;
             return -1;
         }else{
+            int debloque=0;
+            if(m_nb(file)==m_capacite(file)){
+                //faudra debloque s il existe des proc en attente
+                debloque=1;
+            }
             size_t l = m_size_messages(file);
             if(type== 0){
                 char buf[l];
@@ -227,6 +233,9 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                 mon_message * mess = (mon_message*)buf;
                 msg = mess;
                 suppressionMess(file,0);
+                if(debloque!=0){
+                    //envoie signal
+                }
                 return (mess->len);
             }else if(type>0){
                 //lire le premier message dont le type est type
@@ -240,6 +249,9 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     if(mess->type==type){
                         msg=mess;
                         suppressionMess(file,i);
+                        if(debloque!=0){
+                            //envoie signal
+                        }
                         return (mess->len);
                     }
                 }
@@ -257,6 +269,9 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     if(mess->type<=labs(type)){
                         msg=mess;
                         suppressionMess(file,i);
+                        if(debloque!=0){
+                            //envoie signal
+                        }
                         return (mess->len);
                     } 
                 }
