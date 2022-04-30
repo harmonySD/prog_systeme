@@ -17,6 +17,10 @@
 
 #include "m_file.h"
 
+void handler(int sig){
+    char *txt="*notification* Message arrivee !\n";
+    write(1,txt,strlen(txt));    
+}
 
 // initialiser mutex et cond
 int initialiser_mutex(pthread_mutex_t *pmutex){
@@ -59,6 +63,9 @@ size_t m_nbSignal(MESSAGE *file){
 
 size_t m_size_messages(MESSAGE *file){
     return (sizeof(mon_message)+file->file->longMax);
+}
+size_t m_size_signal(MESSAGE *file){
+    return(sizeof(signalEnregis));
 }
 
 // connexion a une file de message ou creation
@@ -152,7 +159,6 @@ int m_envoi(MESSAGE *file, const void *msg,
     }
     else {
         if(msgflag == 0){
-            // faire avec signaux
             while(m_nb(file)>= file->file->capacite){
                 sleep(5);
             }
@@ -162,6 +168,26 @@ int m_envoi(MESSAGE *file, const void *msg,
             errno = EAGAIN;
             return -1;
         }
+    }
+
+
+    //signaux a envoyer SSI aucun proc suspendu en attente de ce mssages
+    size_t l = m_size_signal(file);
+    for(int i=0;i<m_nbSignal(file); i++){
+     //pour chaque signalEnrigistre
+        char buf[l];
+            for (int j=0;j<l;j++){
+                buf[j] = file->file->enregistrement[j+ i*l];
+            }
+            signalEnregis * sig = (signalEnregis*)buf;
+            mon_message * mess = (mon_message*)msg;
+            if(sig->typeMess==mess->type){
+                //meme type envoyer signal 
+                kill(sig->pid,sig->typeSignal);
+                //desenregistre 
+                desenregistrement(file);
+                return (mess->len);
+            }
     }
     return 0;
 }
@@ -312,7 +338,6 @@ int desenregistrement(MESSAGE *file){
     errno = EAGAIN;
     return -1;
 }
-
 
 void affichage_message(MESSAGE *m){
     if(m==NULL) printf("null la\n");

@@ -15,7 +15,11 @@ int main(int argc, char const *argv[]){
     affichage_message(m1);
     printf("\n\n");
 
-
+    //pour signaux
+    struct sigaction  str = {0};
+    str.sa_handler=handler;
+    sigaction(SIGUSR1,&str,NULL);
+    
     int enre = enregistrement(m, SIGUSR1, getpid());
     printf("enregistrement : %d\n",enre);
     affichage_message(m);

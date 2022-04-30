@@ -59,7 +59,7 @@ typedef struct{
 
 
 
-
+void handler(int sig);
 extern int initialiser_mutex(pthread_mutex_t *pmutex);
 extern int initialiser_cond(pthread_cond_t *pcond);
 
