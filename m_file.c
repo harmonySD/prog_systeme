@@ -187,19 +187,20 @@ int m_envoi(MESSAGE *file, const void *msg,
     for(int i=0;i<m_nbSignal(file); i++){
      //pour chaque signalEnrigistre
         char buf[l];
-            for (int j=0;j<l;j++){
-                buf[j] = file->file->enregistrement[j+ i*l];
-            }
-            signalEnregis * sig = (signalEnregis*)buf;
-            mon_message * mess = (mon_message*)msg;
-            if(sig->typeMess==mess->type){
-                //meme type envoyer signal 
-                kill(sig->pid,sig->typeSignal);
-                //desenregistre 
-                desenregistrement(file);
-                return (mess->len);
-            }
+        for (int j=0;j<l;j++){
+            buf[j] = file->file->enregistrement[j+ i*l];
+        }
+        signalEnregis * sig = (signalEnregis*)buf;
+        mon_message * mess = (mon_message*)msg;
+        if(sig->typeMess==mess->type){
+            //meme type envoyer signal 
+            kill(sig->pid,sig->typeSignal);
+             //desenregistre 
+            desenregistrement(file);
+            return (mess->len);
+        }
     }
+    kill(0,SIGUSR2);
     return 0;
 }
 
@@ -246,7 +247,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                 if(debloque!=0){
                     // printf("type=0\n");
                     //envoie signal
-                    kill(0,SIGHUP);
+                    kill(0,SIGUSR1);
                 }
                 return (mess->len);
             }else if(type>0){
@@ -263,7 +264,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                         suppressionMess(file,i);
                         if(debloque!=0){
                             //envoie signal
-                            kill(0,SIGHUP);
+                            kill(0,SIGUSR1);
                         }
                         return (mess->len);
                     }
@@ -284,7 +285,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                         suppressionMess(file,i);
                         if(debloque!=0){
                             //envoie signal
-                            kill(0,SIGHUP);
+                            kill(0,SIGUSR1);
                         }
                         return (mess->len);
                     } 
@@ -298,9 +299,16 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
         if(flags == 0){
             // faire avec signaux
             while(m_nb(file)==0){
-                sleep(5);
+                //sleep(5);
+                pause();
+                int res= m_reception(file,msg,len,type,flags);
+                while(res==-1){
+                    res=m_reception(file,msg,len,type,flags);
+                    pause();
+                }
+                return res;
+
             }
-            return m_reception(file,msg,len,type,flags);
         }
         else {
             errno = EAGAIN;
