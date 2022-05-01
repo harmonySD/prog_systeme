@@ -4,8 +4,7 @@ int main(int argc, char const *argv[]){
     // /dev/shm
 
     char * path = "/a";
-    // shm_unlink(path);
-    // printf("pid : %d\n",getpid());
+    shm_unlink(path);
 
     MESSAGE* m = m_connexion(path, O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
     // MESSAGE *m = m_connexion(path,O_RDWR, 0);
@@ -18,10 +17,11 @@ int main(int argc, char const *argv[]){
     int signal = SIGHUP;
     //pour signaux
     struct sigaction  str = {0};
-    str.sa_handler=handler;
+    // sigfillset(&str.sa_mask);
+    str.sa_handler = handler;
     sigaction(signal,&str,NULL);
-    sigaction(SIGUSR1,&str,NULL);
-    sigaction(SIGUSR2,&str,NULL);
+    // sigaction(SIGUSR1,&str,NULL);
+    // sigaction(SIGUSR2,&str,NULL);
     
     int enre = enregistrement(m, signal, getpid());
     printf("enregistrement : %d\n",enre);
@@ -61,36 +61,36 @@ int main(int argc, char const *argv[]){
     // affichage_message(m1);
     // printf("\n\n");
 
-    // char t3[] = "coucou";
-    // mon_message *mes2 = malloc(sizeof(mon_message) + sizeof(t3));
-    // mes2->type = (long) getpid();
-    // mes2->len = strlen(t3);
-    // memmove( mes2->mtext, t3, sizeof(t3)) ;
-    // i = m_envoi(m,mes2,sizeof(t3),O_NONBLOCK);
-    // affichage_message(m);
-    // printf("\n");
-    // // affichage_message(m1);
-    // // printf("\n\n");
+    char t3[] = "coucou";
+    mon_message *mes2 = malloc(sizeof(mon_message) + sizeof(t3));
+    mes2->type = (long) getpid();
+    mes2->len = strlen(t3);
+    memmove( mes2->mtext, t3, sizeof(t3)) ;
+    i = m_envoi(m,mes2,sizeof(t3),O_NONBLOCK);
+    affichage_message(m);
+    printf("\n");
+    // affichage_message(m1);
+    // printf("\n\n");
 
-    // char t4[] = "aurevoir";
-    // mon_message *mes3 = malloc(sizeof(mon_message) + sizeof(t4));
-    // mes3->type = (long) getpid();
-    // mes3->len = strlen(t4);
-    // memmove( mes3->mtext, t4, sizeof(t4)) ;
-    // i = m_envoi(m,mes3,sizeof(t4),O_NONBLOCK);
-    // if(i == 0){
-    //     printf("Ok %d\n",i);
-    //     affichage_message(m);
-    //     printf("\n");
-    //     // affichage_message(m1);
-    //     // printf("\n");
-    // }
-    // else if(i == -1 && errno == EAGAIN){
-    //     printf("file pleine, attendez un peu\n");
-    // }
-    // else {
-    //     printf("erreur\n");
-    // }
+    char t4[] = "aurevoir";
+    mon_message *mes3 = malloc(sizeof(mon_message) + sizeof(t4));
+    mes3->type = (long) getpid();
+    mes3->len = strlen(t4);
+    memmove( mes3->mtext, t4, sizeof(t4)) ;
+    i = m_envoi(m,mes3,sizeof(t4),0);
+    if(i == 0){
+        printf("Ok %d\n",i);
+        affichage_message(m);
+        printf("\n");
+        // affichage_message(m1);
+        // printf("\n");
+    }
+    else if(i == -1 && errno == EAGAIN){
+        printf("file pleine, attendez un peu\n");
+    }
+    else {
+        printf("erreur\n");
+    }
 
 
     // printf("**********************************************************************\n");
@@ -104,7 +104,7 @@ int main(int argc, char const *argv[]){
     printf("***********************************************************\n");
     int len_mess=300;
     mon_message *mess=malloc(sizeof(mon_message) + len_mess);
-    int p1= m_reception(m,mess,len_mess,0,0);
+    int p1= m_reception(m,mess,len_mess,0,O_NONBLOCK);
     if(p1!= -1){
             printf("Ok recu %d\n",p1);
             affichage_mon_message(mess);

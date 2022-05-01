@@ -18,11 +18,11 @@
 #include "m_file.h"
 
 void handler(int sig){
-    if (sig == SIGUSR1) {
+    if (sig == SIGUSR2) {
         char *txt="De nouveau de la place !\n";
         write(1,txt,strlen(txt));  
     }
-    else if(sig == SIGUSR2){
+    else if(sig == SIGUSR1){
         char *txt="Arrivee dun message !\n";
         write(1,txt,strlen(txt));
     }
@@ -156,10 +156,22 @@ int m_destruction(const char *nom){
 // envoie de message
 int m_envoi(MESSAGE *file, const void *msg, 
     size_t len, int msgflag){
-    int debloque=0;
+    // int debloque=0;
     if(m_nb(file)==0){
-        //faudra debloque s il existe des proc en attente
-        debloque=1;
+        //envoie signal
+        int f = fork();
+        if(f == -1){
+            printf("erreur fork\n");
+            return -1;
+        }
+        else if(f == 0){  // fils
+            execlp("killall", "killall", "-SIGUSR1", "bash", (char *)0);
+        }
+        else{
+            wait(NULL);
+        }
+        // kill(-1,SIGUSR2);
+        // debloque=1;
     }
     if(m_nb(file) < file->file->capacite){
         // verifier len pas trop grand
@@ -176,9 +188,13 @@ int m_envoi(MESSAGE *file, const void *msg,
     else {
         if(msgflag == 0){
             while(m_nb(file)>= file->file->capacite){
-                
-                sleep(5);
-                // pause();
+                // sleep(5);
+                struct sigaction  str = {0};
+                // sigfillset(&str.sa_mask);
+                str.sa_handler=handler;
+                sigaction(SIGUSR1,&str,NULL);
+                pause();
+                printf("fin while \n");
             }
             return m_envoi(file,msg,len,msgflag);
         }
@@ -193,22 +209,17 @@ int m_envoi(MESSAGE *file, const void *msg,
     for(int i=0;i<m_nbSignal(file); i++){
      //pour chaque signalEnregistre
         char buf[l];
-            for (int j=0;j<l;j++){
-                buf[j] = file->file->enregistrement[j+ i*l];
-            }
-            signalEnregis * sig = (signalEnregis*)buf;
-            mon_message * mess = (mon_message*)msg;
-            if(sig->typeMess==mess->type){
-                //meme type envoyer signal 
-                kill(sig->pid,sig->typeSignal);
-                //desenregistre 
-                desenregistrement(file);
-            }
-    }
-    if(debloque!=0){
-        // printf("type=0\n");
-        //envoie signal
-        // kill(-1,SIGUSR2);
+        for (int j=0;j<l;j++){
+            buf[j] = file->file->enregistrement[j+ i*l];
+        }
+        signalEnregis * sig = (signalEnregis*)buf;
+        mon_message * mess = (mon_message*)msg;
+        if(sig->typeMess==mess->type){
+            //meme type envoyer signal 
+            kill(sig->pid,sig->typeSignal);
+            //desenregistre 
+            desenregistrement(file);
+        }
     }
     return 0;
 }
@@ -238,8 +249,12 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
         if(flags == 0){
             // faire avec signaux
             while(m_nb(file)==0){
-                sleep(5);
-                // pause();
+                // sleep(5);
+                struct sigaction  str = {0};
+                // sigfillset(&str.sa_mask);
+                str.sa_handler=handler;
+                sigaction(SIGUSR1,&str,NULL);
+                pause();
                 // int res = m_reception(file,msg,len,type,flags);
                 // while(res==-1){
                 //     res=m_reception(file,msg,len,type,flags);
@@ -260,8 +275,9 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
             //faudra debloque si il existe des proc en attente
             debloque=1;
         }
+        printf("debloque : %d \n",debloque);
         size_t l = m_size_messages(file);
-        if(type== 0){
+        if(type == 0){
             char buf[l];
             for (int j=0;j<l;j++){
                 buf[j] = file->file->messages[j];
@@ -273,9 +289,20 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
             if(debloque!=0){
                 // printf("type=0\n");
                 //envoie signal
+                int f = fork();
+                if(f == -1){
+                    printf("erreur fork\n");
+                    return -1;
+                }
+                else if(f == 0){  // fils
+                    execlp("killall", "killall", "-SIGUSR2", "bash", (char *)0);
+                }
+                else{
+                    wait(NULL);
+                }
                 // kill(0,SIGUSR1);
             }
-            affichage_mon_message(mess);
+            // affichage_mon_message(mess);
             return (mess->len);
         }else if(type>0){
             //lire le premier message dont le type est type
@@ -291,6 +318,17 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     suppressionMess(file,i);
                     if(debloque!=0){
                         //envoie signal
+                        int f = fork();
+                        if(f == -1){
+                            printf("erreur fork\n");
+                            return -1;
+                        }
+                        else if(f == 0){  // fils
+                            execlp("killall", "killall", "-SIGUSR2", "bash", (char *)0);
+                        }
+                        else{
+                            wait(NULL);
+                        }
                         // kill(0,SIGUSR1);
                     }
                     return (mess->len);
@@ -312,6 +350,17 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     suppressionMess(file,i);
                     if(debloque!=0){
                         //envoie signal
+                        int f = fork();
+                        if(f == -1){
+                            printf("erreur fork\n");
+                            return -1;
+                        }
+                        else if(f == 0){  // fils
+                            execlp("killall", "killall", "-SIGUSR2", "bash", (char *)0);
+                        }
+                        else{
+                            wait(NULL);
+                        }
                         // kill(0,SIGUSR1);
                     }
                     return (mess->len);
