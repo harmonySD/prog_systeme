@@ -109,11 +109,11 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         size_t tailleent = sizeof(enteteFile) + (sizeof(mon_message)+len_max)*nb_msg
                     +sizeof(signalEnregis)*NBSIG;
         if(nom == NULL){
-            printf("anonyme\n");
+            // printf("anonyme\n");
             //file ano
             entete = mmap(NULL, tailleent, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS,-1,0);
         }else{
-            printf("nom\n");
+            // printf("nom\n");
             int d=shm_open(nom, options, mode);
             ftruncate(d,sizeof(enteteFile));
             if(d<0) return NULL;
@@ -156,6 +156,11 @@ int m_destruction(const char *nom){
 // envoie de message
 int m_envoi(MESSAGE *file, const void *msg, 
     size_t len, int msgflag){
+    int debloque=0;
+    if(m_nb(file)==0){
+        //faudra debloque s il existe des proc en attente
+        debloque=1;
+    }
     if(m_nb(file) < file->file->capacite){
         // verifier len pas trop grand
         if(file->file->longMax < len) return -1;
@@ -171,8 +176,9 @@ int m_envoi(MESSAGE *file, const void *msg,
     else {
         if(msgflag == 0){
             while(m_nb(file)>= file->file->capacite){
-                //sleep(5);
-                pause();
+                
+                sleep(5);
+                // pause();
             }
             return m_envoi(file,msg,len,msgflag);
         }
@@ -185,7 +191,7 @@ int m_envoi(MESSAGE *file, const void *msg,
     //signaux a envoyer SSI aucun proc suspendu en attente de ce message
     size_t l = m_size_signal(file);
     for(int i=0;i<m_nbSignal(file); i++){
-     //pour chaque signalEnrigistre
+     //pour chaque signalEnregistre
         char buf[l];
             for (int j=0;j<l;j++){
                 buf[j] = file->file->enregistrement[j+ i*l];
@@ -197,8 +203,12 @@ int m_envoi(MESSAGE *file, const void *msg,
                 kill(sig->pid,sig->typeSignal);
                 //desenregistre 
                 desenregistrement(file);
-                return (mess->len);
             }
+    }
+    if(debloque!=0){
+        // printf("type=0\n");
+        //envoie signal
+        // kill(-1,SIGUSR2);
     }
     return 0;
 }
@@ -221,91 +231,95 @@ void suppressionMess(MESSAGE *file, int pos){
 
 // lire message 
 ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
-    if(flags==O_NONBLOCK){
-        if(len < m_message_len(file)){
-            errno = EMSGSIZE;
-            return -1;
-        }else if(m_nb(file)==0){
-            errno = EAGAIN;
-            return -1;
-        }else{
-            int debloque=0;
-            if(m_nb(file)==m_capacite(file)){
-                //faudra debloque s il existe des proc en attente
-                debloque=1;
-            }
-            size_t l = m_size_messages(file);
-            if(type== 0){
-                char buf[l];
-                for (int j=0;j<l;j++){
-                    buf[j] = file->file->messages[j];
-                }
-                mon_message * mess = (mon_message*)buf;
-                msg = mess;
-                suppressionMess(file,0);
-                if(debloque!=0){
-                    // printf("type=0\n");
-                    //envoie signal
-                    kill(0,SIGHUP);
-                }
-                return (mess->len);
-            }else if(type>0){
-                //lire le premier message dont le type est type
-                for(int i=0;i<m_nb(file); i++){
-                    //pour chaque mon_message
-                    char buf[l];
-                    for (int j=0;j<l;j++){
-                        buf[j] = file->file->messages[j+ i*l];
-                    }
-                    mon_message * mess = (mon_message*)buf;
-                    if(mess->type==type){
-                        msg=mess;
-                        suppressionMess(file,i);
-                        if(debloque!=0){
-                            //envoie signal
-                            kill(0,SIGHUP);
-                        }
-                        return (mess->len);
-                    }
-                }
-                errno = EAGAIN;
-                return -1;
-            }else if(type<0){
-                //lire le premier message dont type inferier ou egal a |type|
-                for(int i=0;i<m_nb(file); i++){
-                    //pour chaque mon_message
-                    char buf[l];
-                    for (int j=0;j<l;j++){
-                        buf[j] = file->file->messages[j+ i*l];
-                    }
-                    mon_message * mess = (mon_message*)buf;
-                    if(mess->type<=labs(type)){
-                        msg=mess;
-                        suppressionMess(file,i);
-                        if(debloque!=0){
-                            //envoie signal
-                            kill(0,SIGHUP);
-                        }
-                        return (mess->len);
-                    } 
-                }
-                errno = EAGAIN;
-                return -1;
-            }
-            
-        }
-    }else{
+    if(len < m_message_len(file)){
+        errno = EMSGSIZE;
+        return -1;
+    }else if(m_nb(file)==0){
         if(flags == 0){
             // faire avec signaux
             while(m_nb(file)==0){
                 sleep(5);
+                // pause();
+                // int res = m_reception(file,msg,len,type,flags);
+                // while(res==-1){
+                //     res=m_reception(file,msg,len,type,flags);
+                //     pause();
+                // }
+                // return res;
             }
-            return m_reception(file,msg,len,type,flags);
+            int res = m_reception(file,msg,len,type,flags);
+            return res;
         }
         else {
             errno = EAGAIN;
             return -1;
         }
+    }else{
+        int debloque=0;
+        if(m_nb(file)==m_capacite(file)){
+            //faudra debloque si il existe des proc en attente
+            debloque=1;
+        }
+        size_t l = m_size_messages(file);
+        if(type== 0){
+            char buf[l];
+            for (int j=0;j<l;j++){
+                buf[j] = file->file->messages[j];
+            }
+            mon_message * mess = (mon_message*)buf;
+            memcpy(msg,mess, m_size_messages(file));
+            // msg = mess;
+            suppressionMess(file,0);
+            if(debloque!=0){
+                // printf("type=0\n");
+                //envoie signal
+                // kill(0,SIGUSR1);
+            }
+            affichage_mon_message(mess);
+            return (mess->len);
+        }else if(type>0){
+            //lire le premier message dont le type est type
+            for(int i=0;i<m_nb(file); i++){
+                //pour chaque mon_message
+                char buf[l];
+                for (int j=0;j<l;j++){
+                    buf[j] = file->file->messages[j+ i*l];
+                }
+                mon_message * mess = (mon_message*)buf;
+                if(mess->type==type){
+                    msg=mess;
+                    suppressionMess(file,i);
+                    if(debloque!=0){
+                        //envoie signal
+                        // kill(0,SIGUSR1);
+                    }
+                    return (mess->len);
+                }
+            }
+            errno = EAGAIN;
+            return -1;
+        }else if(type<0){
+            //lire le premier message dont type inferier ou egal a |type|
+            for(int i=0;i<m_nb(file); i++){
+                //pour chaque mon_message
+                char buf[l];
+                for (int j=0;j<l;j++){
+                    buf[j] = file->file->messages[j+ i*l];
+                }
+                mon_message * mess = (mon_message*)buf;
+                if(mess->type<=labs(type)){
+                    msg=mess;
+                    suppressionMess(file,i);
+                    if(debloque!=0){
+                        //envoie signal
+                        // kill(0,SIGUSR1);
+                    }
+                    return (mess->len);
+                } 
+            }
+            errno = EAGAIN;
+            return -1;
+        }    
     }
     return -1;
 }
@@ -406,18 +420,8 @@ void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS){
     printf("-----FIN-----\n");
 }
 
-// void affichage_signal(signalTab *s, size_t nb){
-//     printf("capaciteSignal : %zu\n", s->capaciteSignal);
-//     printf("lastSignal : %d \n", s->lastSignal);
-//     printf("nbSignal : %zu\n",nb);
-//     printf("\n");
-//     size_t l = sizeof(signalEnregis);
-//     for(int i=0;i<nb;i++){
-//         char buf[l];
-//         for (int j=0;j<l;j++){
-//             buf[j] = s->enregistrement[j+ i*l];
-//         }
-//         signalEnregis * sig = (signalEnregis*)buf;
-//         printf("pid : %zu, typeMess : %zu, typeSignal : %u\n",sig->pid,sig->typeMess, sig->typeSignal);
-//     }
-// }
+void affichage_mon_message(mon_message *m){
+    printf("Message -> type : %zu, len : %zu, mess : %s\n",
+        m->type, m->len, m->mtext);
+
+}

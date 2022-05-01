@@ -78,6 +78,7 @@ extern int enregistrement(MESSAGE *file, int signal, long type);
 extern void suppressionSig(MESSAGE *file, int pos);
 extern int desenregistrement(MESSAGE *file);
 extern void affichage_message(MESSAGE *m);
+extern void affichage_mon_message(mon_message *m);
 extern void affichage_entete(enteteFile *e, size_t nb, size_t l, size_t nbS);
 // extern void affichage_signal(signalTab *s, size_t nb);
 // extern void affichage_mon_mess(mon_message *mm);
