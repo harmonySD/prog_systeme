@@ -1,5 +1,7 @@
 # Compiled source #
 *.o
+test1
+m_file
 
 # Packages #
 *.jar
