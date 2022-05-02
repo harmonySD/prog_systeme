@@ -4,7 +4,7 @@ int main(int argc, char const *argv[]){
     // /dev/shm
 
     char * path = "/a";
-    // shm_unlink(path);
+    shm_unlink(path);
 
     MESSAGE* m = m_connexion(path, O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
     // MESSAGE *m = m_connexion(path,O_RDWR, 0);
@@ -32,60 +32,35 @@ int main(int argc, char const *argv[]){
     
 
     // int t[2] = {-12, 99};
-    char t[] = "salut";
-    mon_message *mes = malloc(sizeof(mon_message) + strlen(t));
-    if( mes == NULL ) return -1;
-    mes->type = (long) getpid(); /* comme type de message, on choisit l’identité
-    //                             * de l’expéditeur */
-    mes->len = strlen(t);
-    memmove( mes->mtext, t, strlen(t)) ; /* copier les deux int à envoyer */
-    int i = m_envoi(m,mes,strlen(t),O_NONBLOCK);
-    affichage_message(m);
-    printf("\n");
-
-    char t2[] = "bonjour";
-    mon_message *mes1 = malloc(sizeof(mon_message) + sizeof(t2));
-    mes1->type = (long) getpid();
-    mes1->len = strlen(t2);
-    memmove( mes1->mtext, t2, sizeof(t2)) ;
-    i = m_envoi(m,mes1,sizeof(t2),O_NONBLOCK);
-    affichage_message(m);
-    printf("\n");
-
-    char t3[] = "coucou";
-    mon_message *mes2 = malloc(sizeof(mon_message) + sizeof(t3));
-    mes2->type = (long) getpid();
-    mes2->len = strlen(t3);
-    memmove( mes2->mtext, t3, sizeof(t3)) ;
-    i = m_envoi(m,mes2,sizeof(t3),O_NONBLOCK);
-    affichage_message(m);
-    printf("\n");
-    affichage_message(m1);
-    printf("\n\n");
-
-    char t4[] = "aurevoir";
-    mon_message *mes3 = malloc(sizeof(mon_message) + sizeof(t4));
-    mes3->type = (long) getpid();
-    mes3->len = strlen(t4);
-    memmove( mes3->mtext, t4, sizeof(t4)) ;
-    i = m_envoi(m,mes3,sizeof(t4),O_NONBLOCK);
-    if(i == 0){
-        printf("Ok %d\n",i);
-        affichage_message(m);
-        printf("\n");
-    }
-    else if(i == -1 && errno == EAGAIN){
-        printf("file pleine, attendez un peu\n");
-    }
-    else {
-        printf("erreur\n");
+    for(int i=0; i < 5; i++){
+        char t[] = "salut";
+        t[sizeof(t)-1] = i +'0';
+        mon_message *mes = malloc(sizeof(mon_message) + sizeof(t));
+        mes->type = (long) getpid();
+        mes->len = sizeof(t);
+        memmove( mes->mtext, t, sizeof(t)) ;
+        int j = m_envoi(m, mes, sizeof(t), O_NONBLOCK);
+        if(j == 0){
+            printf("Ok envoie %d\n",i);
+            affichage_message(m);
+            printf("\n");
+        }
+        else if(j == -1 && errno == EAGAIN){
+            printf("file pleine, attendez un peu\n");
+        }
+        else {
+            printf("erreur\n");
+        }
     }
 
 
     printf("\n********************RECEVOIR***************************\n\n");
-    int len_mess=300;
+    enre = enregistrement(m, signal, getpid());
+    printf("enregistrement : %d\n\n",enre);
+
+    int len_mess = m_message_len(m);
     mon_message *mess=malloc(sizeof(mon_message) + len_mess);
-    int p1= m_reception(m,mess,len_mess,0,0);
+    int p1= m_reception(m,mess,len_mess,0,O_NONBLOCK);
     if(p1!= -1){
             printf("Ok recu %d\n",p1);
             affichage_mon_message(mess);
@@ -103,7 +78,7 @@ int main(int argc, char const *argv[]){
     printf("\n");
 
     mon_message *mess2=malloc(sizeof(mon_message) + len_mess);
-    int p3= m_reception(m,mess2,len_mess,getpid(),O_NONBLOCK);
+    int p3= m_reception(m, mess2, len_mess, getpid(), O_NONBLOCK);
     if(p3!= -1){
             printf("Ok recu %d\n",p3);
             affichage_mon_message(mess2);
@@ -114,11 +89,11 @@ int main(int argc, char const *argv[]){
     char t5[] = "aurevoir";
     mon_message *mes5 = malloc(sizeof(mon_message) + sizeof(t5));
     mes5->type = (long) getpid();
-    mes5->len = strlen(t5);
+    mes5->len = sizeof(t5);
     memmove( mes5->mtext, t5, sizeof(t5)) ;
-    i = m_envoi(m,mes5,sizeof(t5),O_NONBLOCK);
+    int i = m_envoi(m,mes5,sizeof(t5),O_NONBLOCK);
     if(i == 0){
-        printf("Ok %d\n",i);
+        printf("Ok envoie %d\n",i);
         affichage_message(m);
         printf("\n");
         affichage_message(m1);

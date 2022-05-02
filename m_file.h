@@ -33,7 +33,6 @@ typedef struct{
     int typeSignal;
 }signalEnregis;
 
-
 typedef struct{
     size_t longMax;
     size_t capacite;
@@ -44,12 +43,6 @@ typedef struct{
     char enregistrement[NBSIG*sizeof(signalEnregis)];
     char messages[];
 }enteteFile;
-
-// typedef struct{
-//     size_t capaciteSignal;
-//     int lastSignal;
-//     char enregistrement[];
-// }signalTab;
 
 typedef struct{
     enteteFile *file;
@@ -67,7 +60,7 @@ extern MESSAGE *m_connexion( const char *nom, int options, int nb, ...);//size_t
 extern int m_deconnexion(MESSAGE *file);
 extern int m_destruction(const char *nom);
 extern int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag);
-extern void suppressionMess(MESSAGE *file, int pos);
+extern void suppressionMess(MESSAGE *file, size_t taille, size_t deb);
 extern ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags);
 extern size_t m_message_len(MESSAGE *file);
 extern size_t m_capacite(MESSAGE *file);
