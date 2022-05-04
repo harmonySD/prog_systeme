@@ -14,7 +14,7 @@ int main(int argc, char const *argv[]){
     affichage_message(m1);
     printf("\n\n");
 
-    int signal = SIGHUP;
+    int signal = SIGUSR1;
     //pour signaux
     struct sigaction  str = {0};
     str.sa_handler=handler;
@@ -55,18 +55,19 @@ int main(int argc, char const *argv[]){
 
 
     printf("\n********************RECEVOIR***************************\n\n");
-    enre = enregistrement(m, signal, getpid());
-    printf("enregistrement : %d\n\n",enre);
+    // enre = enregistrement(m, signal, getpid());
+    // printf("enregistrement : %d\n\n",enre);
 
     int len_mess = m_message_len(m);
     mon_message *mess=malloc(sizeof(mon_message) + len_mess);
-    int p1= m_reception(m,mess,len_mess,0,0,0);
+    int p1= m_reception(m,mess,len_mess,0,O_NONBLOCK,0);
     if(p1!= -1){
             printf("Ok recu %d\n",p1);
             affichage_mon_message(mess);
     }
     affichage_message(m);
-    printf("\n");
+    printf("nop\n");
+
 
     mon_message *mess1=malloc(sizeof(mon_message) + len_mess);
     int p2= m_reception(m,mess1,len_mess,-getpid(),O_NONBLOCK,0);
@@ -105,7 +106,7 @@ int main(int argc, char const *argv[]){
     else {
         printf("erreur\n");
     }
-    
+    printf("FINITO\n");
 
     printf("\ndeco %d\n",m_deconnexion(m));
     printf("deco %d\n",m_deconnexion(m1));

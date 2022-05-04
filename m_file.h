@@ -36,7 +36,7 @@ typedef struct{
 
 typedef struct{
     long typeMess;
-    int cb;
+    long cb;
 }je_suis_bloque;
 
 typedef struct{

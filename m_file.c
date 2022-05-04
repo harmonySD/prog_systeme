@@ -189,7 +189,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
         if(msgflag == 0){
             // bloquant 
             while(m_nb(file) >= file->file->capacite){
-                sleep(5);
+                //sleep(5);
             }
             return m_envoi(file, msg, len, msgflag);
         }
@@ -237,34 +237,43 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
 
 // lire message 
 ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour){
-
+    // printf("oki\n");
     //len pas assez grand
     if(len >= m_message_len(file)){
+        // printf("oki2\n");
         size_t l = m_size_messages(file);
         if(type == 0){
             char buf[l];
             for (int j=0;j<l;j++){
                 buf[j] = file->file->messages[j];
             }
+            //int r = pthread_mutex_lock(&file->file->mutex);
             mon_message * mess = (mon_message*)buf;
             memcpy(msg, mess, sizeof(mon_message) + mess->len);
             suppressionMess(file, m_message_taille(mess), m_message_taille(mess));
+            //r = pthread_mutex_unlock(&file->file->mutex);
             return (mess->len);
         }else if(type>0){
             // lire le premier message dont le type est type
+            // printf("tcho1\n");
             size_t emplacement = 0;
             for(int i=0; i < m_nb(file); i++){
                 char buf[l];
                 for(int j=0; j < l; j++){
                     buf[j] = file->file->messages[j + emplacement];
                 }
+                // printf("tcho2\n");
                 mon_message * mess = (mon_message*)buf;
                 emplacement += sizeof(mon_message) + mess->len;
                 if(mess->type==type){
+                    printf("tcho3\n");
+                    //int r = pthread_mutex_lock(&file->file->mutex);
                     memcpy(msg, mess, sizeof(mon_message) + mess->len);
                     suppressionMess(file, m_message_taille(mess), emplacement);
-
+                    //r = pthread_mutex_unlock(&file->file->mutex);
+                    printf("tcho3\n");
                     if(tour==1){
+                        printf("tcho4\n");
                         size_t l= sizeof(je_suis_bloque);
                         for(int i=0; i<m_nbType(file);i++){
                             char buf[l];
@@ -274,8 +283,11 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                             je_suis_bloque *b= (je_suis_bloque*)buf;
                             if(b->typeMess==type){
                                 int r = pthread_mutex_lock(&file->file->mutex);
+                                if(r == -1) printf("BEURK\n");
                                 b->cb--;
+                                msync(file->file, sizeof(file->file), MS_SYNC);
                                 r = pthread_mutex_unlock(&file->file->mutex);
+                                if(r == -1) printf("BEURK\n");
                                 return (mess->len);
                             }
                         }
@@ -294,8 +306,10 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 mon_message * mess = (mon_message*)buf;
                 emplacement += sizeof(mon_message) + mess->len;
                 if(mess->type <= labs(type)){
+                    //int r = pthread_mutex_lock(&file->file->mutex);
                     memcpy(msg, mess, sizeof(mon_message) + mess->len);
                     suppressionMess(file, m_message_taille(mess), emplacement);
+                   // r = pthread_mutex_unlock(&file->file->mutex);
                     return (mess->len);
                 }       
             }
@@ -303,11 +317,12 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
         //bloquant
         if(flags == 0){
             while(m_nb(file) == 0){
-                sleep(5);
+                //sleep(5);
             }
             if(type>0){
                 size_t l= sizeof(je_suis_bloque);
                 //printf("nb type %zu\n",m_nbType(file));
+                // printf("bah\n");
                 for(int i=0; i<m_nbType(file);i++){
                     char buf[l];
                     for(int j=0; j< l ; j++){
@@ -318,23 +333,29 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                         if(tour==0){
                             printf("OKKKKKKKKKK\n");
                             int r = pthread_mutex_lock(&file->file->mutex);
+                            if(r == -1) printf("BEURK\n");
                             b->cb+=1;
+                            msync(file->file, sizeof(file->file), MS_SYNC);
                             r = pthread_mutex_unlock(&file->file->mutex);
+                            if(r == -1) printf("BEURK\n");
                         }
-                        printf("ICIIIII\n");
+                        //printf("ICIIIII\n");
+                        // printf("bah4\n");
                         return m_reception(file,msg,len,type,flags,1);
                     }
                 }
                 //cree 
+                int r = pthread_mutex_lock(&file->file->mutex);
+                if(r == -1) printf("BEURK\n");
                 je_suis_bloque *b=malloc(sizeof(je_suis_bloque));
-                 //printf("OKKKKKKKKKK\n");
+                 printf("OKKKKKKKKKK he\n");
                 b->cb=1;
                 b->typeMess=type;
-                int r = pthread_mutex_lock(&file->file->mutex);
                 memcpy(file->file->bloque+(file->file->lastBloque),b,sizeof(je_suis_bloque));
                 file->file->lastBloque += sizeof(je_suis_bloque);
                 msync(file->file, sizeof(file->file), MS_SYNC);
                 r = pthread_mutex_unlock(&file->file->mutex);
+                if(r == -1) printf("BEURK\n");
                 return m_reception(file,msg,len,type,flags,1);
             }
             return m_reception(file,msg,len,type,flags,0);
@@ -445,7 +466,7 @@ void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS){
             buf[j] = e->bloque[j+ i*ls2];
         }
         je_suis_bloque * b = (je_suis_bloque*)buf;
-        printf("typemess : %zu, cb : %d\n", 
+        printf("typemess : %zu, cb : %zu\n", 
                 b->typeMess, b->cb);
     }
     size_t emplacement = 0;

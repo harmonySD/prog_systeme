@@ -1,9 +1,9 @@
 .PHONY=clean all
 CC=gcc
 CFLAGS = -g -Wall -pedantic  
-LDLIBS = -pthread -lm -lrt
+LDLIBS = -pthread -lm 
 
-ALL = test1
+ALL = test1 test2
 
 all: $(ALL)
 
@@ -17,6 +17,12 @@ test1.o : m_file.c test1.c m_file.h
 
 test1: test1.o m_file.o
 	$(CC) $(CFLAGS) test1.o m_file.o -o test1 $(LDLIBS)
+
+test2.o : m_file.c test2.c m_file.h
+	$(CC) $(CFLAGS) -c test2.c $(LDLIBS)
+
+test2: test2.o m_file.o
+	$(CC) $(CFLAGS) test2.o m_file.o -o test2 $(LDLIBS)
 
 # m_file: m_file.o 
 # m_file.o: m_file.c 
