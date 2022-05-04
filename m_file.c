@@ -86,6 +86,10 @@ size_t m_nb(MESSAGE *file){
 size_t m_nbSignal(MESSAGE *file){
     return (file->file->lastSignal)/sizeof(signalEnregis);
 }
+//nombre de signaux enregistree
+size_t m_nbType(MESSAGE *file){
+    return(file->file->lastBloque)/sizeof(je_suis_bloque);
+}
 // taille dun signalEnregis
 size_t m_size_signal(MESSAGE *file){
     return(sizeof(signalEnregis));
@@ -118,7 +122,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         len_max = (size_t) va_arg(param, size_t);
         mode = (mode_t)va_arg(param, int);
         size_t tailleent = sizeof(enteteFile) + (sizeof(mon_message) + len_max)*nb_msg
-                    + sizeof(signalEnregis)*NBSIG;
+                    + sizeof(signalEnregis)*NBSIG+sizeof(je_suis_bloque)*NBTYPE;
         if(nom == NULL){
             // file ano
             entete = mmap(NULL, tailleent, PROT_READ|PROT_WRITE, 
@@ -139,6 +143,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         entete->first = 0;
         entete->last = 0;
         entete->lastSignal = 0;
+        entete->lastBloque =0;
         entete->longMax = len_max;
         mess->type = mode;
         mess->file = entete;
@@ -154,7 +159,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
 int m_deconnexion(MESSAGE *file){
     if(munmap(file->file, 
         sizeof(enteteFile) + m_size_messages(file) * file->file->capacite 
-            + sizeof(signalEnregis)*NBSIG) == -1)
+            + sizeof(signalEnregis)*NBSIG+sizeof(je_suis_bloque)*NBTYPE) == -1)
         return -1;    
     return 0;
 }
@@ -227,24 +232,14 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
     r = pthread_mutex_unlock(&file->file->mutex);
 }
 
+
+
+
 // lire message 
-ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
-    if(len < m_message_len(file)){
-        errno = EMSGSIZE;
-        return -1;
-    }else if(m_nb(file) == 0){
-        if(flags == 0){
-            // bloquant
-            while(m_nb(file) == 0){
-                sleep(5);;
-            }
-            return m_reception(file, msg, len, type, flags);
-        }
-        else {
-            errno = EAGAIN;
-            return -1;
-        }
-    }else{
+ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour){
+
+    //len pas assez grand
+    if(len >= m_message_len(file)){
         size_t l = m_size_messages(file);
         if(type == 0){
             char buf[l];
@@ -268,11 +263,26 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                 if(mess->type==type){
                     memcpy(msg, mess, sizeof(mon_message) + mess->len);
                     suppressionMess(file, m_message_taille(mess), emplacement);
+
+                    if(tour==1){
+                        size_t l= sizeof(je_suis_bloque);
+                        for(int i=0; i<m_nbType(file);i++){
+                            char buf[l];
+                            for(int j=0; j< l ; j++){
+                                buf[j] = file->file->bloque[j+i*l];
+                            }
+                            je_suis_bloque *b= (je_suis_bloque*)buf;
+                            if(b->typeMess==type){
+                                int r = pthread_mutex_lock(&file->file->mutex);
+                                b->cb--;
+                                r = pthread_mutex_unlock(&file->file->mutex);
+                                return (mess->len);
+                            }
+                        }
+                    }
                     return (mess->len);
                 }      
             }
-            errno = EAGAIN;
-            return -1;
         }else if(type < 0){
             // lire le premier message dont type inferier ou egal a |type|
             size_t emplacement = 0;
@@ -289,10 +299,54 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags){
                     return (mess->len);
                 }       
             }
+        }
+        //bloquant
+        if(flags == 0){
+            while(m_nb(file) == 0){
+                sleep(5);
+            }
+            if(type>0){
+                size_t l= sizeof(je_suis_bloque);
+                //printf("nb type %zu\n",m_nbType(file));
+                for(int i=0; i<m_nbType(file);i++){
+                    char buf[l];
+                    for(int j=0; j< l ; j++){
+                        buf[j] = file->file->bloque[j+i*l];
+                    }
+                    je_suis_bloque *b= (je_suis_bloque*)buf;
+                    if(b->typeMess==type){
+                        if(tour==0){
+                            printf("OKKKKKKKKKK\n");
+                            int r = pthread_mutex_lock(&file->file->mutex);
+                            b->cb+=1;
+                            r = pthread_mutex_unlock(&file->file->mutex);
+                        }
+                        printf("ICIIIII\n");
+                        return m_reception(file,msg,len,type,flags,1);
+                    }
+                }
+                //cree 
+                je_suis_bloque *b=malloc(sizeof(je_suis_bloque));
+                 //printf("OKKKKKKKKKK\n");
+                b->cb=1;
+                b->typeMess=type;
+                int r = pthread_mutex_lock(&file->file->mutex);
+                memcpy(file->file->bloque+(file->file->lastBloque),b,sizeof(je_suis_bloque));
+                file->file->lastBloque += sizeof(je_suis_bloque);
+                msync(file->file, sizeof(file->file), MS_SYNC);
+                r = pthread_mutex_unlock(&file->file->mutex);
+                return m_reception(file,msg,len,type,flags,1);
+            }
+            return m_reception(file,msg,len,type,flags,0);
+            
+
+        }
+        else {
             errno = EAGAIN;
             return -1;
         }    
     }
+    errno=EMSGSIZE;
     return -1;
 }
 
@@ -370,6 +424,7 @@ void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS){
     printf("first : %d, last : %d \n", e->first, e->last);
     printf("nbMess : %zu\n",nbM);
     printf("nbSig : %zu\n",nbS);
+    printf("nbBloque : %d\n",e->lastBloque);
     printf("\n");
     size_t ls = sizeof(signalEnregis);
     for(int i=0; i < nbS; i++){
@@ -380,6 +435,18 @@ void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS){
         signalEnregis * sig = (signalEnregis*)buf;
         printf("pid : %zu, typeMess : %zu, typeSignal : %u\n", 
                 sig->pid, sig->typeMess, sig->typeSignal);
+    }
+    printf("\n");
+
+    size_t ls2 = sizeof(je_suis_bloque);
+    for(int i=0; i < nbS; i++){
+        char buf[ls2];
+        for (int j=0; j < ls2; j++){
+            buf[j] = e->bloque[j+ i*ls2];
+        }
+        je_suis_bloque * b = (je_suis_bloque*)buf;
+        printf("typemess : %zu, cb : %d\n", 
+                b->typeMess, b->cb);
     }
     size_t emplacement = 0;
     for(int i=0; i < nbM; i++){

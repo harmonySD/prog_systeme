@@ -20,6 +20,7 @@
 #define MFILE_H
 
 #define NBSIG 10
+#define NBTYPE 32
 
 typedef struct{
     long type;
@@ -34,13 +35,20 @@ typedef struct{
 }signalEnregis;
 
 typedef struct{
+    long typeMess;
+    int cb;
+}je_suis_bloque;
+
+typedef struct{
     size_t longMax;
     size_t capacite;
     int first;
     int last;
     int lastSignal;
+    int lastBloque;
     pthread_mutex_t mutex;
     char enregistrement[NBSIG*sizeof(signalEnregis)];
+    char bloque[NBTYPE*sizeof(je_suis_bloque)];
     char messages[];
 }enteteFile;
 
@@ -61,7 +69,7 @@ extern int m_deconnexion(MESSAGE *file);
 extern int m_destruction(const char *nom);
 extern int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag);
 extern void suppressionMess(MESSAGE *file, size_t taille, size_t deb);
-extern ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags);
+extern ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour);
 extern size_t m_message_len(MESSAGE *file);
 extern size_t m_capacite(MESSAGE *file);
 extern size_t m_nb(MESSAGE *file);
