@@ -349,7 +349,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 if(r == -1) printf("BEURK\n");
                 je_suis_bloque *b=malloc(sizeof(je_suis_bloque));
                  printf("OKKKKKKKKKK he\n");
-                b->cb=1;
+                b->cb=66;
                 b->typeMess=type;
                 memcpy(file->file->bloque+(file->file->lastBloque),b,sizeof(je_suis_bloque));
                 file->file->lastBloque += sizeof(je_suis_bloque);
@@ -435,17 +435,17 @@ void affichage_message(MESSAGE *m){
     else{
         printf("\n-----DEBUT-----\n");
         printf("type : %ld\n",m->type);
-        affichage_entete(m->file, m_nb(m), m_size_messages(m), m_nbSignal(m));
+        affichage_entete(m->file, m_nb(m), m_size_messages(m), m_nbSignal(m),m_nbType(m));
     } 
 }
 // affichage dune entete
-void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS){
+void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS, size_t nbT){
     printf("long max : %zu\n",e->longMax);
     printf("capacite : %zu\n", e->capacite);
     printf("first : %d, last : %d \n", e->first, e->last);
     printf("nbMess : %zu\n",nbM);
     printf("nbSig : %zu\n",nbS);
-    printf("nbBloque : %d\n",e->lastBloque);
+    printf("nbBloque : %zu\n",nbT);
     printf("\n");
     size_t ls = sizeof(signalEnregis);
     for(int i=0; i < nbS; i++){
@@ -460,7 +460,7 @@ void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS){
     printf("\n");
 
     size_t ls2 = sizeof(je_suis_bloque);
-    for(int i=0; i < nbS; i++){
+    for(int i=0; i < nbT; i++){
         char buf[ls2];
         for (int j=0; j < ls2; j++){
             buf[j] = e->bloque[j+ i*ls2];
