@@ -87,6 +87,7 @@ int main(int argc, char const *argv[]){
     affichage_message(m);
     printf("\n");
 
+
     char t5[] = "aurevoir";
     mon_message *mes5 = malloc(sizeof(mon_message) + sizeof(t5));
     mes5->type = (long) getpid();

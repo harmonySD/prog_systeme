@@ -237,7 +237,7 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
 
 // lire message 
 ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour){
-    // printf("oki\n");
+     printf("oki\n");
     //len pas assez grand
     if(len >= m_message_len(file)){
         // printf("oki2\n");
@@ -314,22 +314,28 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 }       
             }
         }
-        //bloquant
+        //bloquant 
+        //si j'arrive c'est que jai pas le type de ce message 
         if(flags == 0){
             while(m_nb(file) == 0){
                 //sleep(5);
             }
             if(type>0){
+                //je dois le mettre dans mon tableau
                 size_t l= sizeof(je_suis_bloque);
                 //printf("nb type %zu\n",m_nbType(file));
                 // printf("bah\n");
+                //regarder si il y a deja un un attente (donc on fait juste ++)
                 for(int i=0; i<m_nbType(file);i++){
+                    //printf("la\n");
                     char buf[l];
                     for(int j=0; j< l ; j++){
                         buf[j] = file->file->bloque[j+i*l];
                     }
                     je_suis_bloque *b= (je_suis_bloque*)buf;
+                    //on a trouver 
                     if(b->typeMess==type){
+                        //si tour =0 on a pas deja fait de tour donc ++
                         if(tour==0){
                             printf("OKKKKKKKKKK\n");
                             int r = pthread_mutex_lock(&file->file->mutex);
@@ -339,9 +345,11 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                             r = pthread_mutex_unlock(&file->file->mutex);
                             if(r == -1) printf("BEURK\n");
                         }
-                        //printf("ICIIIII\n");
-                        // printf("bah4\n");
-                        return m_reception(file,msg,len,type,flags,1);
+                        //on a dea fait un tour donc fait rien juste rappel 
+                        //printf("ICIIIII\n"); //pk segfault ici
+                        affichage_message(file);
+                        sleep(15);
+                        return (m_reception(file,msg,len,type,flags,1));
                     }
                 }
                 //cree 
@@ -349,13 +357,14 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 if(r == -1) printf("BEURK\n");
                 je_suis_bloque *b=malloc(sizeof(je_suis_bloque));
                  printf("OKKKKKKKKKK he\n");
-                b->cb=66;
+                b->cb=1;
                 b->typeMess=type;
                 memcpy(file->file->bloque+(file->file->lastBloque),b,sizeof(je_suis_bloque));
                 file->file->lastBloque += sizeof(je_suis_bloque);
                 msync(file->file, sizeof(file->file), MS_SYNC);
                 r = pthread_mutex_unlock(&file->file->mutex);
                 if(r == -1) printf("BEURK\n");
+                affichage_message(file);
                 return m_reception(file,msg,len,type,flags,1);
             }
             return m_reception(file,msg,len,type,flags,0);
