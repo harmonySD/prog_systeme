@@ -27,7 +27,8 @@ int main(int argc, char const *argv[]){
     affichage_message(m1);
     printf("\n\n");
 
-    if(m==NULL ) return 1;
+    if(m == NULL ) return 1;
+
     printf("*********************ENVOIE************************\n\n");
     
 
@@ -38,10 +39,10 @@ int main(int argc, char const *argv[]){
         mon_message *mes = malloc(sizeof(mon_message) + sizeof(t));
         mes->type = (long) getpid();
         mes->len = sizeof(t);
-        memmove( mes->mtext, t, sizeof(t)) ;
+        memmove(mes->mtext, t, sizeof(t)) ;
         int j = m_envoi(m, mes, sizeof(t),0);
         if(j == 0){
-            printf("Ok envoie %d\n",j);
+            printf("Ok envoie %d\n", j);
             affichage_message(m);
             printf("\n");
         }
@@ -55,43 +56,42 @@ int main(int argc, char const *argv[]){
 
 
     printf("\n********************RECEVOIR***************************\n\n");
-    // enre = enregistrement(m, signal, getpid());
-    // printf("enregistrement : %d\n\n",enre);
 
     int len_mess = m_message_len(m);
-    // mon_message *mess=malloc(sizeof(mon_message) + len_mess);
-    // int p1= m_reception(m,mess,len_mess,0,O_NONBLOCK,0);
-    // if(p1!= -1){
+
+    // mon_message *mess1 = malloc(sizeof(mon_message) + len_mess);
+    // int p1 = m_reception(m, mess1, len_mess, 0, O_NONBLOCK, 0);
+    // if(p1 != -1){
     //         printf("Ok recu %d\n",p1);
-    //         affichage_mon_message(mess);
+    //         affichage_mon_message(mess1);
     // }
     // affichage_message(m);
     // printf("\n");
 
-    mon_message *mess1=malloc(sizeof(mon_message) + len_mess);
-    int p2= m_reception(m,mess1,len_mess,-getpid(),O_NONBLOCK,0);
-    if(p2!= -1){
-            printf("Ok recu %d\n",p2);
-            affichage_mon_message(mess1);
+    mon_message *mess2 = malloc(sizeof(mon_message) + len_mess);
+    int p2 = m_reception(m, mess2, len_mess, -getpid(), O_NONBLOCK, 0);
+    if(p2 != -1){
+        printf("Ok recu %d\n",p2);
+        affichage_mon_message(mess2);
     }
     affichage_message(m);
     printf("\n");
 
-    mon_message *mess2=malloc(sizeof(mon_message) + len_mess);
-    int p3= m_reception(m, mess2, len_mess, getpid(), O_NONBLOCK,0);
-    if(p3!= -1){
-            printf("Ok recu %d\n",p3);
-            affichage_mon_message(mess2);
+    mon_message *mess3=malloc(sizeof(mon_message) + len_mess);
+int p3 = m_reception(m, mess3, len_mess, getpid(), O_NONBLOCK,0);
+if(p3 != -1){
+        printf("Ok recu %d\n",p3);
+            affichage_mon_message(mess3);
     }
     affichage_message(m);
     printf("\n");
 
     char t5[] = "aurevoir";
-    mon_message *mes5 = malloc(sizeof(mon_message) + sizeof(t5));
-    mes5->type = (long) getpid();
-    mes5->len = sizeof(t5);
-    memmove( mes5->mtext, t5, sizeof(t5)) ;
-    int i = m_envoi(m,mes5,sizeof(t5),O_NONBLOCK);
+    mon_message *mess5 = malloc(sizeof(mon_message) + sizeof(t5));
+    mess5->type = (long) getpid();
+    mess5->len = sizeof(t5);
+    memmove( mess5->mtext, t5, sizeof(t5)) ;
+    int i = m_envoi(m,mess5,sizeof(t5),O_NONBLOCK);
     if(i == 0){
         printf("Ok envoie %d\n",i);
         affichage_message(m);
@@ -112,9 +112,5 @@ int main(int argc, char const *argv[]){
     printf("destruc %d\n",m_destruction(path));
 
 
-
-    while(1){
-
-    }
     return 0;
 }

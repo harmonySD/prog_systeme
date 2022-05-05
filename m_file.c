@@ -72,7 +72,7 @@ size_t m_nb(MESSAGE *file){
         // ne pas depasser last qui signifie le dernier message enregistrer
         if(emplacement < file->file->last){
             char buf[tailleMax];
-            for(int j = 0; j < tailleMax; j++){
+            for(int j=0; j < tailleMax; j++){
                 buf[j] = file->file->messages[j + emplacement];
             }
             mon_message * mess = (mon_message*)buf;
@@ -122,7 +122,7 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         len_max = (size_t) va_arg(param, size_t);
         mode = (mode_t)va_arg(param, int);
         size_t tailleent = sizeof(enteteFile) + (sizeof(mon_message) + len_max)*nb_msg
-                    + sizeof(signalEnregis)*NBSIG+sizeof(je_suis_bloque)*NBTYPE;
+                    + sizeof(signalEnregis)*NBSIG + sizeof(je_suis_bloque)*NBTYPE;
         if(nom == NULL){
             // file ano
             entete = mmap(NULL, tailleent, PROT_READ|PROT_WRITE, 
@@ -206,26 +206,26 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
      //pour chaque signalEnregistre
         char buf[l];
         for (int j=0; j < l; j++){
-            buf[j] = file->file->enregistrement[j+ i*l];
+            buf[j] = file->file->enregistrement[j + i*l];
         }
         signalEnregis * sig = (signalEnregis*)buf;
         mon_message * mess = (mon_message*)msg;
         if(sig->typeMess == mess->type){
             // meme type envoyer signal 
-            //verifaucun en attente 
+            // verif aucun en attente 
             size_t l= sizeof(je_suis_bloque);
-            for(int i=0; i<m_nbType(file);i++){
+            for(int i=0; i < m_nbType(file); i++){
                 char buf[l];
-                for(int j=0; j< l ; j++){
-                    buf[j] = file->file->bloque[j+i*l];
+                for(int j=0; j < l ; j++){
+                    buf[j] = file->file->bloque[j + i*l];
                 }
-                je_suis_bloque *b= (je_suis_bloque*)buf;
+                je_suis_bloque *b = (je_suis_bloque*)buf;
                 //verif type 
-                if(b->typeMess==sig->typeMess){
-                    if(b->cb==0){
+                if(b->typeMess == sig->typeMess){
+                    if(b->cb == 0){
                         kill(sig->pid, sig->typeSignal);
                         // desenregistre 
-                        desenregistrement(file,sig->pid);
+                        desenregistrement(file, sig->pid);
                         return 0;
                     }else{
                         printf("impossible processus en attente pour ce type de message\n");
@@ -236,7 +236,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
             }
             kill(sig->pid, sig->typeSignal);
             // desenregistre 
-            desenregistrement(file,sig->pid);
+            desenregistrement(file, sig->pid);
             return 0;
             
         }
@@ -258,12 +258,10 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
 }
 
 
-
-
 // lire message 
 ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour){
     if(!(file->type & S_IRUSR)) return -1;
-    //len pas assez grand
+    // len pas assez grand
     if(len >= m_message_len(file)){
         size_t l = m_size_messages(file);
         if(type == 0){
@@ -285,22 +283,23 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 }
                 mon_message * mess = (mon_message*)buf;
                 emplacement += sizeof(mon_message) + mess->len;
-                if(mess->type==type){
+                if(mess->type == type){
                     memcpy(msg, mess, sizeof(mon_message) + mess->len);
                     suppressionMess(file, m_message_taille(mess), emplacement);
-                    if(tour==1){
+                    if(tour == 1){
                         size_t l= sizeof(je_suis_bloque);
-                        for(int i=0; i<m_nbType(file);i++){
+                        for(int i=0; i < m_nbType(file); i++){
                             char buf[l];
                             for(int j=0; j< l ; j++){
-                                buf[j] = file->file->bloque[j+i*l];
+                                buf[j] = file->file->bloque[j + i*l];
                             }
                             je_suis_bloque *b= (je_suis_bloque*)buf;
-                            if(b->typeMess==type){
+                            if(b->typeMess == type){
                                 int r = pthread_mutex_lock(&file->file->mutex);
                                 b->cb--;
                                 msync(file->file, sizeof(file->file), MS_SYNC);
                                 r = pthread_mutex_unlock(&file->file->mutex);
+                                if(r == -1) return -1;
                                 return (mess->len);
                             }
                         }
@@ -318,7 +317,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 }
                 mon_message * mess = (mon_message*)buf;
                 emplacement += sizeof(mon_message) + mess->len;
-                if(mess->type <= labs(type)){
+                if(mess->type  <= labs(type)){
                     memcpy(msg, mess, sizeof(mon_message) + mess->len);
                     suppressionMess(file, m_message_taille(mess), emplacement);
                     return (mess->len);
@@ -335,19 +334,19 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 //je dois le mettre dans mon tableau
                 size_t l= sizeof(je_suis_bloque);
                 //regarder si il y a deja un un attente (donc on fait juste ++)
-                for(int i=0; i<m_nbType(file);i++){
+                for(int i=0; i < m_nbType(file); i++){
                     char buf[l];
-                    for(int j=0; j< l ; j++){
-                        buf[j] = file->file->bloque[j+i*l];
+                    for(int j=0; j < l ; j++){
+                        buf[j] = file->file->bloque[j + i*l];
                     }
-                    je_suis_bloque *b= (je_suis_bloque*)buf;
+                    je_suis_bloque *b = (je_suis_bloque*)buf;
                     //on a trouver 
-                    if(b->typeMess==type){
+                    if(b->typeMess == type){
                         //si tour =0 on a pas deja fait de tour donc ++
-                        if(tour==0){
+                        if(tour == 0){
                             int r = pthread_mutex_lock(&file->file->mutex);
                             if(r == -1) return -1;
-                            b->cb+=1;
+                            b->cb += 1;
                             msync(file->file, sizeof(file->file), MS_SYNC);
                             r = pthread_mutex_unlock(&file->file->mutex);
                             if(r == -1) return -1;
@@ -360,24 +359,24 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 //cree 
                 int r = pthread_mutex_lock(&file->file->mutex);
                 if(r == -1) return -1;
-                je_suis_bloque *b=malloc(sizeof(je_suis_bloque));
-                b->cb=1;
-                b->typeMess=type;
-                memcpy(file->file->bloque+(file->file->lastBloque),b,sizeof(je_suis_bloque));
+                je_suis_bloque *b = malloc(sizeof(je_suis_bloque));
+                b->cb = 1;
+                b->typeMess = type;
+                memcpy(file->file->bloque + (file->file->lastBloque), b, sizeof(je_suis_bloque));
                 file->file->lastBloque += sizeof(je_suis_bloque);
                 msync(file->file, sizeof(file->file), MS_SYNC);
                 r = pthread_mutex_unlock(&file->file->mutex);
                 if(r == -1) return -1;
-                return m_reception(file,msg,len,type,flags,1);
+                return m_reception(file, msg, len, type, flags, 1);
             }
-            return m_reception(file,msg,len,type,flags,0);
+            return m_reception(file, msg, len, type, flags, 0);
         }
         else {
             errno = EAGAIN;
             return -1;
         }    
     }
-    errno=EMSGSIZE;
+    errno = EMSGSIZE;
     return -1;
 }
 
