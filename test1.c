@@ -4,7 +4,7 @@ int main(int argc, char const *argv[]){
     // /dev/shm
 
     char * path = "/a";
-    shm_unlink(path);
+    // shm_unlink(path);
 
     MESSAGE* m = m_connexion(path, O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
     // MESSAGE *m = m_connexion(path,O_RDWR, 0);
@@ -27,7 +27,7 @@ int main(int argc, char const *argv[]){
     affichage_message(m1);
     printf("\n\n");
 
-
+    if(m==NULL ) return 1;
     printf("*********************ENVOIE************************\n\n");
     
 
@@ -41,7 +41,7 @@ int main(int argc, char const *argv[]){
         memmove( mes->mtext, t, sizeof(t)) ;
         int j = m_envoi(m, mes, sizeof(t),0);
         if(j == 0){
-            printf("Ok envoie %d\n",i);
+            printf("Ok envoie %d\n",j);
             affichage_message(m);
             printf("\n");
         }
@@ -107,13 +107,14 @@ int main(int argc, char const *argv[]){
     }
     
 
-    // printf("\ndeco %d\n",m_deconnexion(m));
-    // printf("deco %d\n",m_deconnexion(m1));
-    // printf("destruc %d\n",m_destruction(path));
+    printf("\ndeco %d\n",m_deconnexion(m));
+    printf("deco %d\n",m_deconnexion(m1));
+    printf("destruc %d\n",m_destruction(path));
 
 
 
-while(1){
+    // while(1){
 
-}
+    // }
+    return 0;
 }

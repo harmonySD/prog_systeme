@@ -227,7 +227,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
                     if(b->cb==0){
                         kill(sig->pid, sig->typeSignal);
                         // desenregistre 
-                        desenregistrement(file);
+                        desenregistrement(file,sig->pid);
                         return 0;
                     }else{
                         printf("impossible processus en attente pour ce type de message\n");
@@ -238,7 +238,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
             }
             kill(sig->pid, sig->typeSignal);
             // desenregistre 
-            desenregistrement(file);
+            desenregistrement(file,sig->pid);
             return 0;
             
         }
@@ -447,7 +447,7 @@ void suppressionSig(MESSAGE *file, int pos){
     r = pthread_mutex_unlock(&file->file->mutex);
 }
 
-int desenregistrement(MESSAGE *file){
+int desenregistrement(MESSAGE *file, pid_t pid){
     printf("OUIIIII\n");
     size_t l = sizeof(signalEnregis);
     //lire le premier processus dont le pid est getpid()
@@ -458,7 +458,7 @@ int desenregistrement(MESSAGE *file){
             buf[j] = file->file->enregistrement[j + i*l];
         }
         signalEnregis * sig = (signalEnregis*)buf;
-        if(sig->pid == getpid()){
+        if(sig->pid == pid){
             suppressionSig(file, i);
             return 0;
         }
