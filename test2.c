@@ -118,6 +118,7 @@ int main(int argc, char const *argv[]){
         scanf("%c", &choix);
         purger();
         if(choix == 'e'){
+            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // regarder pour taille, car ici taille fixe pas correcte
             char tMess[m_message_len(m)];
             printf("Veuillez ecrire votre message de taille inferieur à %ld (sinon il sera coupe a lenvoie): ", m_message_len(m));

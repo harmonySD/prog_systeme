@@ -202,7 +202,8 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
 
     // signaux a envoyer SSI aucun proc suspendu en attente de ce message
     size_t l = m_size_signal(file);
-    printf("nbSignal : %ld\n", m_nbSignal(file));
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // envoyer signal a tous les proc demandant ce typeMess
     for(int i=0; i < m_nbSignal(file); i++){
      //pour chaque signalEnregistre
         char buf[l];
