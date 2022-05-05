@@ -78,7 +78,7 @@ int main(int argc, char const *argv[]){
     printf("\n");
 
     mon_message *mess3=malloc(sizeof(mon_message) + len_mess);
-int p3 = m_reception(m, mess3, len_mess, getpid(), O_NONBLOCK,0);
+int p3 = m_reception(m, mess3, len_mess, getpid(), O_NONBLOCK, 0);
 if(p3 != -1){
         printf("Ok recu %d\n",p3);
             affichage_mon_message(mess3);

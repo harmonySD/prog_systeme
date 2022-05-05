@@ -18,7 +18,7 @@
 #include "m_file.h"
 
 void handler(int sig){
-    char *txt="*NOTIFICATION* Message arrive !\n\n";
+    char *txt="\n*NOTIFICATION* Message arrive !\n\n";
     write(1,txt,strlen(txt));  
 }
 
@@ -202,6 +202,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
 
     // signaux a envoyer SSI aucun proc suspendu en attente de ce message
     size_t l = m_size_signal(file);
+    printf("nbSignal : %ld\n", m_nbSignal(file));
     for(int i=0; i < m_nbSignal(file); i++){
      //pour chaque signalEnregistre
         char buf[l];
@@ -213,7 +214,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
         if(sig->typeMess == mess->type){
             // meme type envoyer signal 
             // verif aucun en attente 
-            size_t l= sizeof(je_suis_bloque);
+            size_t l = sizeof(je_suis_bloque);
             for(int i=0; i < m_nbType(file); i++){
                 char buf[l];
                 for(int j=0; j < l ; j++){
@@ -226,10 +227,8 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
                         kill(sig->pid, sig->typeSignal);
                         // desenregistre 
                         desenregistrement(file, sig->pid);
-                        return 0;
                     }else{
                         printf("impossible processus en attente pour ce type de message\n");
-                        return 0;
                     }
                 }
                 
@@ -237,8 +236,6 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
             kill(sig->pid, sig->typeSignal);
             // desenregistre 
             desenregistrement(file, sig->pid);
-            return 0;
-            
         }
     }
     return 0;
@@ -259,12 +256,13 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
 
 
 // lire message 
-ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour){
+ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, int tour){
+    printf("typeMess %ld %d %d\n",file->type,S_IRUSR|S_IWUSR, !(file->type & S_IRUSR));
     if(!(file->type & S_IRUSR)) return -1;
-    // len pas assez grand
-    if(len >= m_message_len(file)){
+    // len pas assez grand et file non vide
+    if(len >= m_message_len(file) ){
         size_t l = m_size_messages(file);
-        if(type == 0){
+        if(type == 0 && m_nb(file) > 0){
             char buf[l];
             for (int j=0;j<l;j++){
                 buf[j] = file->file->messages[j];
@@ -273,7 +271,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
             memcpy(msg, mess, sizeof(mon_message) + mess->len);
             suppressionMess(file, m_message_taille(mess), m_message_taille(mess));
             return (mess->len);
-        }else if(type>0){
+        }else if(type > 0){
             // lire le premier message dont le type est type
             size_t emplacement = 0;
             for(int i=0; i < m_nb(file); i++){
@@ -382,6 +380,20 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
 
 int enregistrement(MESSAGE *file, int signal, long type){
     if(m_nbSignal(file) < NBSIG){
+        size_t l = sizeof(signalEnregis);
+        // verifier que proc pas deja enregistrer
+        for(int i=0; i < m_nbSignal(file); i++){
+            //pour chaque signalEnregis
+            char buf[l];
+            for (int j=0; j < l; j++){
+                buf[j] = file->file->enregistrement[j + i*l];
+            }
+            signalEnregis * sig = (signalEnregis*)buf;
+            if(sig->pid == getpid()){
+                return -1;
+            }
+        }
+
         signalEnregis *sig = malloc(sizeof(signalEnregis));
         sig->pid = getpid();
         sig->typeMess = type;
