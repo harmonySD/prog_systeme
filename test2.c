@@ -57,7 +57,7 @@ int main(int argc, char const *argv[]){
     // enre = enregistrement(m, signal, getpid());
     // printf("enregistrement : %d\n\n",enre);
 
-    int enre = enregistrement(m, signal, 9742);
+    int enre = enregistrement(m, signal,22208);
     printf("enregistrement : %d\n",enre);
 
     int len_mess = m_message_len(m);
@@ -68,7 +68,6 @@ int main(int argc, char const *argv[]){
         affichage_mon_message(mess);
     }
     affichage_message(m);
-    printf("nop\n");
 
     mon_message *mess1=malloc(sizeof(mon_message) + len_mess);
     int p2= m_reception(m,mess1,len_mess,-getpid(),O_NONBLOCK,0);
