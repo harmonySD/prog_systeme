@@ -172,6 +172,7 @@ int m_destruction(const char *nom){
 
 // envoie de message
 int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
+    if(!(file->type & S_IWUSR)) return -1;
     // tableau de message non plein
     if(m_nb(file) < file->file->capacite){
         // verifier len pas trop grand
@@ -200,6 +201,8 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
     }
 
     // signaux a envoyer SSI aucun proc suspendu en attente de ce message
+
+    ///LALALALALALALLALALALLA
     size_t l = m_size_signal(file);
     for(int i=0; i < m_nbSignal(file); i++){
      //pour chaque signalEnregistre
@@ -211,9 +214,33 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
         mon_message * mess = (mon_message*)msg;
         if(sig->typeMess == mess->type){
             // meme type envoyer signal 
+            //verifaucun en attente 
+            size_t l= sizeof(je_suis_bloque);
+            for(int i=0; i<m_nbType(file);i++){
+                char buf[l];
+                for(int j=0; j< l ; j++){
+                    buf[j] = file->file->bloque[j+i*l];
+                }
+                je_suis_bloque *b= (je_suis_bloque*)buf;
+                //verif type 
+                if(b->typeMess==sig->typeMess){
+                    if(b->cb==0){
+                        kill(sig->pid, sig->typeSignal);
+                        // desenregistre 
+                        desenregistrement(file);
+                        return 0;
+                    }else{
+                        printf("impossible processus en attente pour ce type de message\n");
+                        return 0;
+                    }
+                }
+                
+            }
             kill(sig->pid, sig->typeSignal);
             // desenregistre 
             desenregistrement(file);
+            return 0;
+            
         }
     }
     return 0;
@@ -237,6 +264,7 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
 
 // lire message 
 ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour){
+    if(!(file->type & S_IRUSR)) return -1;
      printf("oki\n");
     //len pas assez grand
     if(len >= m_message_len(file)){
@@ -348,7 +376,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                         //on a dea fait un tour donc fait rien juste rappel 
                         //printf("ICIIIII\n"); //pk segfault ici
                         affichage_message(file);
-                        sleep(15);
+                        sleep(10);
                         return (m_reception(file,msg,len,type,flags,1));
                     }
                 }
@@ -420,6 +448,7 @@ void suppressionSig(MESSAGE *file, int pos){
 }
 
 int desenregistrement(MESSAGE *file){
+    printf("OUIIIII\n");
     size_t l = sizeof(signalEnregis);
     //lire le premier processus dont le pid est getpid()
     for(int i=0; i < m_nbSignal(file); i++){
