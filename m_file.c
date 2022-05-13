@@ -258,7 +258,6 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
 
 // lire message 
 ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, int tour){
-    printf("typeMess %ld %d %d\n",file->type,S_IRUSR|S_IWUSR, !(file->type & S_IRUSR));
     if(!(file->type & S_IRUSR)) return -1;
     // len pas assez grand et file non vide
     if(len >= m_message_len(file) ){
@@ -351,7 +350,6 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, 
                             if(r == -1) return -1;
                         }
                         //on a deja fait un tour donc fait rien juste rappel 
-                        sleep(10);
                         return (m_reception(file,msg,len,type,flags,1));
                     }
                 }
@@ -488,7 +486,7 @@ void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS, size_t n
             buf[j] = e->bloque[j+ i*ls2];
         }
         je_suis_bloque * b = (je_suis_bloque*)buf;
-        printf("typemess : %zu, cb : %zu\n", 
+        printf("typemess : %zu, cbBloque : %zu\n", 
                 b->typeMess, b->cb);
     }
     size_t emplacement = 0;

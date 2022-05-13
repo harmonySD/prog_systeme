@@ -6,16 +6,23 @@ void purger(void){
    }
 }
 
+int tailleReelle(char *t){
+    int taille = 0;
+    while(taille<strlen(t) && t[taille]!='\0')
+        taille++;
+    return taille;
+}
+
 int main(int argc, char const *argv[]){
     // /dev/shm
 
     char path[10] = {0};
-    printf("Nom de la file commence par / et de moins de 9 caractere : ");
+    printf("Nom de la file commence par / et de moins de 9 caractere :    ");
     scanf("%s", path);
     // printf("path : %s %ld\n",path,sizeof(path));
     purger();
     while(path[0] != '/' || sizeof(path) > 10){
-        printf("Erreur : Nom de la file commence par / et de moins de 9 caractere : ");
+        printf("Erreur : Nom de la file commence par / et de moins de 9 caractere :    ");
         scanf("%s", path);
         purger();
     }
@@ -24,21 +31,21 @@ int main(int argc, char const *argv[]){
     MESSAGE *m = malloc(sizeof(MESSAGE));
 
     char choix;
-    printf("\nCreation (c) ou connection (n) a une file : ");
+    printf("\nCreation (c) ou connection (n) a une file :    ");
     scanf("%c", &choix);
     purger();
     while(choix != 'c' && choix != 'n'){
-        printf("Erreur : Creation (c) ou connection (n) a une file : ");
+        printf("Erreur : Creation (c) ou connection (n) a une file :    ");
         scanf("%c", &choix);
         purger();
     }
     if(choix == 'n'){
         int option;
-        printf("\nChoix option : lecture et ecriture (0), lecture (1), ecriture (2) : ");
+        printf("\nChoix option : \nlecture et ecriture (0), \nlecture (1), \necriture (2) : \n     ");
         scanf("%d", &option);
         purger();
         while(option < 0 || option > 2){
-            printf("Erreur : Choix option : lecture et ecriture (0), lecture (1), ecriture (2) : ");
+            printf("Erreur : Choix option : \nlecture et ecriture (0), \nlecture (1), \necriture (2) : \n     ");
             scanf("%d", &option);
             purger();
         }
@@ -49,13 +56,13 @@ int main(int argc, char const *argv[]){
     else{
         // nombre de message
         int nbMsg;
-        printf("Nombre de message : ");
+        printf("Nombre de message :      ");
         scanf("%d",&nbMsg);
         purger();
 
         // taille max des messages
         int tailleMsg;
-        printf("Taille max des messages : ");
+        printf("Taille max des messages :      ");
         scanf("%d",&tailleMsg);
         purger();
 
@@ -64,14 +71,14 @@ int main(int argc, char const *argv[]){
         printf("\n----- Choix option : -----");
         printf("\nlecture et ecriture en creation (0), \nlecture et ecriture en creation et execution (1)");
         printf("\nlecture  (2), \nlecture en creation et execution (3)");
-        printf("\necriture en creation (4), \necriture en creation et execution (5) : ");
+        printf("\necriture en creation (4), \necriture en creation et execution (5) : \n     ");
         scanf("%d", &optionC);
         purger();
         while(optionC < 0 || optionC > 5){
             printf("Erreur : Choix option : ");
             printf("\nlecture et ecriture en creation (0), \nlecture et ecriture en creation et execution (1)");
             printf("\nlecture  (2), \nlecture en creation et execution (3)");
-            printf("\necriture en creation (4), \necriture en creation et execution (5) : ");
+            printf("\necriture en creation (4), \necriture en creation et execution (5) : \n     ");
             scanf("%d", &optionC);
             purger();
         }
@@ -85,11 +92,11 @@ int main(int argc, char const *argv[]){
 
         // mode de la file
         int mode;
-        printf("Choix mode : lecture et ecriture (0), lecture (1), ecriture (2) : ");
+        printf("Choix mode : \nlecture et ecriture (0), \nlecture (1), \necriture (2) : \n     ");
         scanf("%d", &mode);
         purger();
         while(mode < 0 || mode > 2){
-            printf("Erreur : Choix mode : lecture et ecriture (0), lecture (1), ecriture (2) : ");
+            printf("Erreur : Choix mode : \nlecture et ecriture (0), \nlecture (1), \necriture (2) : \n     ");
             scanf("%d", &mode);
             purger();
         }
@@ -111,29 +118,31 @@ int main(int argc, char const *argv[]){
     while (arret == 1){
         printf("\n");
         printf("----- Veuillez choisir/ecrire votre action : -----\n");
-        printf("e pour envoyer un message, \nr pour recevoir un message, \n");
-        printf("s pour senregistrer,\n");
-        printf("d pour se deconnecter, \nn pour detruire la file\n");
+        printf("Envoyer un message (e), \nRecevoir un message (r), \n");
+        printf("S'enregistrer (s),\n");
+        printf("Se deconnecter (d), \nDetruire la file (n)\n     ");
         char choix; 
         scanf("%c", &choix);
         purger();
         if(choix == 'e'){
-            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // regarder pour taille, car ici taille fixe pas correcte
-            char tMess[m_message_len(m)];
-            printf("Veuillez ecrire votre message de taille inferieur à %ld (sinon il sera coupe a lenvoie): ", m_message_len(m));
-            scanf("%s",tMess);
+            char t[m_message_len(m)*m_message_len(m)];
+            
+            printf("Veuillez ecrire votre message : \n     ");
+            scanf("%s",t);
             purger();
+            int taille = tailleReelle(t);
+            char tMess[taille];
+            memcpy(tMess,t,taille);
             mon_message *mess = malloc(sizeof(mon_message) + sizeof(tMess));
             mess->type = (long) getpid();
             mess->len = sizeof(tMess);
             memmove(mess->mtext, tMess, sizeof(tMess));
             int mode;
-            printf("Et votre mode (0 pour bloquant ou 1 pour non bloquant) : ");
+            printf("Et votre mode (bloquant (0) ou non bloquant (1)) :      ");
             scanf("%d",&mode);
             purger();
             while(mode != 0 && mode != 1){
-                printf("Erreur \nChoix du mode (0 pour bloquant ou O_NONBLOCK pour non bloquant : ");
+                printf("Erreur \nChoix du mode (bloquant (0) ou non bloquant (1)) :      ");
                 scanf("%d",&mode);
                 purger();
             }
@@ -157,17 +166,17 @@ int main(int argc, char const *argv[]){
 
             // typoe du message a recevoir
             long type;
-            printf("\nChoix type message a recevoir : ");
+            printf("\nChoix type message a recevoir (0, pid, -pid):      ");
             scanf("%ld", &type);
             purger();
 
             // mode, bloquant ou non
             int mode;
-            printf("Et votre mode (0 pour bloquant ou 1 pour non bloquant) : ");
+            printf("Et votre mode (bloquant (0) ou non bloquant (1)) :      ");
             scanf("%d",&mode);
             purger();
             while(mode != 0 && mode != 1){
-                printf("Erreur \nChoix du mode (0 pour bloquant ou O_NONBLOCK pour non bloquant : ");
+                printf("Erreur \nChoix du mode (bloquant (0) ou non bloquant (1)) :      ");
                 scanf("%d",&mode);
                 purger();
             }
@@ -190,11 +199,11 @@ int main(int argc, char const *argv[]){
         }
         else if(choix == 's'){
             int sig;
-            printf("\nChoix signal : SIGUSR1 (1), SIGUSR2 (2) : ");
+            printf("\nChoix signal : SIGUSR1 (1), SIGUSR2 (2) :      ");
             scanf("%d", &sig);
             purger();
             while(sig < 1 || sig > 2){
-                printf("Erreur : Choix signal : SIGUSR1 (1), SIGUSR2 (2) : ");
+                printf("Erreur : Choix signal : SIGUSR1 (1), SIGUSR2 (2) :      ");
                 scanf("%d", &sig);
                 purger();
             }
@@ -208,7 +217,7 @@ int main(int argc, char const *argv[]){
             sigaction(signal,&str,NULL);
 
             long type;
-            printf("\nChoix type signal en attente : ");
+            printf("\nChoix type signal en attente (pid):      ");
             scanf("%ld", &type);
             purger();
 
@@ -225,41 +234,7 @@ int main(int argc, char const *argv[]){
             printf("destruc %d\n",m_destruction(path));
             arret = 0;
         }
-
-
-
     }
-    
-
-    // printf("\n********************RECEVOIR***************************\n\n");
-
-    
-
-    
-
-    // mon_message *mess2=malloc(sizeof(mon_message) + len_mess);
-    // int p2 = m_reception(m, mess2, len_mess, -getpid(), O_NONBLOCK, 0);
-    // if(p2 != -1){
-    //     printf("Ok recu %d\n",p2);
-    //     affichage_mon_message(mess2);
-    // }
-    // affichage_message(m);
-    // printf("\n");
-
-    // mon_message *mess3=malloc(sizeof(mon_message) + len_mess);
-    // int p3 = m_reception(m, mess3, len_mess, getpid(), O_NONBLOCK,0);
-    // if(p3 != -1){
-    //     printf("Ok recu %d\n",p3);
-    //     affichage_mon_message(mess3);
-    // }
-    // affichage_message(m);
-    // printf("\n");
-
-
-    // printf("\ndeco %d\n",m_deconnexion(m));
-    // printf("deco %d\n",m_deconnexion(m1));
-    // printf("destruc %d\n",m_destruction(path));
-
 
 
     return 0;
