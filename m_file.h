@@ -47,6 +47,8 @@ typedef struct{
     int lastSignal;
     int lastBloque;
     pthread_mutex_t mutex;
+    pthread_cond_t env;
+    pthread_cond_t rec;
     char enregistrement[NBSIG*sizeof(signalEnregis)];
     char bloque[NBTYPE*sizeof(je_suis_bloque)];
     char messages[];

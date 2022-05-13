@@ -118,15 +118,18 @@ int main(int argc, char const *argv[]){
     while (arret == 1){
         printf("\n");
         printf("----- Veuillez choisir/ecrire votre action : -----\n");
+        printf("Afficher la file (a),\n");
         printf("Envoyer un message (e), \nRecevoir un message (r), \n");
         printf("S'enregistrer (s),\n");
         printf("Se deconnecter (d), \nDetruire la file (n)\n     ");
         char choix; 
         scanf("%c", &choix);
         purger();
-        if(choix == 'e'){
+        if(choix == 'a'){
+            affichage_message(m);
+        }
+        else if(choix == 'e'){
             char t[m_message_len(m)*m_message_len(m)];
-            
             printf("Veuillez ecrire votre message : \n     ");
             scanf("%s",t);
             purger();
@@ -151,7 +154,6 @@ int main(int argc, char const *argv[]){
             else j = m_envoi(m, mess, sizeof(tMess), 0);
             if(j == 0){
                 printf("Ok envoie %d\n", j);
-                affichage_message(m);
             }
             else if(j == -1 && errno == EAGAIN)
                 printf("File pleine, attendez un peu\n");
@@ -194,7 +196,6 @@ int main(int argc, char const *argv[]){
                 printf("File vide, attendez un peu\n");
             else 
                 printf("erreur\n");
-            affichage_message(m);
             printf("pid proc %d \n",getpid());
         }
         else if(choix == 's'){
@@ -223,8 +224,6 @@ int main(int argc, char const *argv[]){
 
             int enre = enregistrement(m, signal, type);
             printf("enregistrement : %d\n",enre);
-            affichage_message(m);
-            printf("pid proc %d \n",getpid());
 
         }
         else if(choix == 'd'){

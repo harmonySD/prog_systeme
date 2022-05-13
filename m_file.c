@@ -137,7 +137,9 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         // initialisation du MESSAGE et de lentete
         int r = initialiser_mutex(&entete->mutex);
         if(r == -1) return NULL;
-        r = pthread_mutex_lock(&entete->mutex);
+        r = initialiser_cond(&entete->env);
+        if(r == -1) return NULL;
+        r = initialiser_cond(&entete->rec);
         if(r == -1) return NULL;
         entete->capacite = nb_msg;
         entete->first = 0;
@@ -148,7 +150,6 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         mess->type = mode;
         mess->file = entete;
         msync(&mess->file, sizeof(mess->file), MS_SYNC);
-        r = pthread_mutex_unlock(&entete->mutex);
         if(r == -1) return NULL;
         va_end(param);
     }
@@ -189,9 +190,13 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
     else {
         if(msgflag == 0){
             // bloquant 
+            int r = pthread_mutex_lock(&file->file->mutex);
+            // if(r == -1) return -1;
             while(m_nb(file) >= file->file->capacite){
-                //sleep(5);
+                pthread_cond_wait(&file->file->env, &file->file->mutex);
             }
+            r = pthread_mutex_unlock(&file->file->mutex);
+            // if(r == -1) return -1;
             return m_envoi(file, msg, len, msgflag);
         }
         else {
@@ -202,8 +207,6 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
 
     // signaux a envoyer SSI aucun proc suspendu en attente de ce message
     size_t l = m_size_signal(file);
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // envoyer signal a tous les proc demandant ce typeMess
     for(int i=0; i < m_nbSignal(file); i++){
      //pour chaque signalEnregistre
         char buf[l];
@@ -239,6 +242,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
             desenregistrement(file, sig->pid);
         }
     }
+    pthread_cond_broadcast(&file->file->rec);
     return 0;
 }
 
@@ -270,6 +274,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, 
             mon_message * mess = (mon_message*)buf;
             memcpy(msg, mess, sizeof(mon_message) + mess->len);
             suppressionMess(file, m_message_taille(mess), m_message_taille(mess));
+            pthread_cond_broadcast(&file->file->env);
             return (mess->len);
         }else if(type > 0){
             // lire le premier message dont le type est type
@@ -298,10 +303,12 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, 
                                 msync(file->file, sizeof(file->file), MS_SYNC);
                                 r = pthread_mutex_unlock(&file->file->mutex);
                                 if(r == -1) return -1;
+                                pthread_cond_broadcast(&file->file->env);
                                 return (mess->len);
                             }
                         }
                     }
+                    pthread_cond_broadcast(&file->file->env);
                     return (mess->len);
                 }      
             }
@@ -318,6 +325,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, 
                 if(mess->type  <= labs(type)){
                     memcpy(msg, mess, sizeof(mon_message) + mess->len);
                     suppressionMess(file, m_message_taille(mess), emplacement);
+                    pthread_cond_broadcast(&file->file->env);
                     return (mess->len);
                 }       
             }
@@ -325,9 +333,13 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, 
         //bloquant 
         //si j'arrive c'est que jai pas le type de ce message 
         if(flags == 0){
+            int r = pthread_mutex_lock(&file->file->mutex);
+            // if(r == -1) return -1;
             while(m_nb(file) == 0){
-                sleep(10);
+                pthread_cond_wait(&file->file->rec, &file->file->mutex);
             }
+            r = pthread_mutex_unlock(&file->file->mutex);
+            // if(r == -1) return -1;
             if(type>0){
                 //je dois le mettre dans mon tableau
                 size_t l= sizeof(je_suis_bloque);
