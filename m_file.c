@@ -18,7 +18,7 @@
 #include "m_file.h"
 
 void handler(int sig){
-    char *txt="*NOTIFICATION* Message arrive !\n\n";
+    char *txt="\n*NOTIFICATION* Message arrive !\n\n";
     write(1,txt,strlen(txt));  
 }
 
@@ -137,7 +137,9 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         // initialisation du MESSAGE et de lentete
         int r = initialiser_mutex(&entete->mutex);
         if(r == -1) return NULL;
-        r = pthread_mutex_lock(&entete->mutex);
+        r = initialiser_cond(&entete->env);
+        if(r == -1) return NULL;
+        r = initialiser_cond(&entete->rec);
         if(r == -1) return NULL;
         entete->capacite = nb_msg;
         entete->first = 0;
@@ -148,7 +150,6 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         mess->type = mode;
         mess->file = entete;
         msync(&mess->file, sizeof(mess->file), MS_SYNC);
-        r = pthread_mutex_unlock(&entete->mutex);
         if(r == -1) return NULL;
         va_end(param);
     }
@@ -189,9 +190,13 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
     else {
         if(msgflag == 0){
             // bloquant 
+            int r = pthread_mutex_lock(&file->file->mutex);
+            // if(r == -1) return -1;
             while(m_nb(file) >= file->file->capacite){
-                //sleep(5);
+                pthread_cond_wait(&file->file->env, &file->file->mutex);
             }
+            r = pthread_mutex_unlock(&file->file->mutex);
+            // if(r == -1) return -1;
             return m_envoi(file, msg, len, msgflag);
         }
         else {
@@ -213,7 +218,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
         if(sig->typeMess == mess->type){
             // meme type envoyer signal 
             // verif aucun en attente 
-            size_t l= sizeof(je_suis_bloque);
+            size_t l = sizeof(je_suis_bloque);
             for(int i=0; i < m_nbType(file); i++){
                 char buf[l];
                 for(int j=0; j < l ; j++){
@@ -226,10 +231,8 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
                         kill(sig->pid, sig->typeSignal);
                         // desenregistre 
                         desenregistrement(file, sig->pid);
-                        return 0;
                     }else{
                         printf("impossible processus en attente pour ce type de message\n");
-                        return 0;
                     }
                 }
                 
@@ -237,10 +240,9 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
             kill(sig->pid, sig->typeSignal);
             // desenregistre 
             desenregistrement(file, sig->pid);
-            return 0;
-            
         }
     }
+    pthread_cond_broadcast(&file->file->rec);
     return 0;
 }
 
@@ -259,12 +261,12 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
 
 
 // lire message 
-ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour){
+ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, int tour){
     if(!(file->type & S_IRUSR)) return -1;
-    // len pas assez grand
-    if(len >= m_message_len(file)){
+    // len pas assez grand et file non vide
+    if(len >= m_message_len(file) ){
         size_t l = m_size_messages(file);
-        if(type == 0){
+        if(type == 0 && m_nb(file) > 0){
             char buf[l];
             for (int j=0;j<l;j++){
                 buf[j] = file->file->messages[j];
@@ -272,8 +274,9 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
             mon_message * mess = (mon_message*)buf;
             memcpy(msg, mess, sizeof(mon_message) + mess->len);
             suppressionMess(file, m_message_taille(mess), m_message_taille(mess));
+            pthread_cond_broadcast(&file->file->env);
             return (mess->len);
-        }else if(type>0){
+        }else if(type > 0){
             // lire le premier message dont le type est type
             size_t emplacement = 0;
             for(int i=0; i < m_nb(file); i++){
@@ -300,10 +303,12 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                                 msync(file->file, sizeof(file->file), MS_SYNC);
                                 r = pthread_mutex_unlock(&file->file->mutex);
                                 if(r == -1) return -1;
+                                pthread_cond_broadcast(&file->file->env);
                                 return (mess->len);
                             }
                         }
                     }
+                    pthread_cond_broadcast(&file->file->env);
                     return (mess->len);
                 }      
             }
@@ -320,6 +325,7 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                 if(mess->type  <= labs(type)){
                     memcpy(msg, mess, sizeof(mon_message) + mess->len);
                     suppressionMess(file, m_message_taille(mess), emplacement);
+                    pthread_cond_broadcast(&file->file->env);
                     return (mess->len);
                 }       
             }
@@ -327,9 +333,13 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
         //bloquant 
         //si j'arrive c'est que jai pas le type de ce message 
         if(flags == 0){
+            int r = pthread_mutex_lock(&file->file->mutex);
+            // if(r == -1) return -1;
             while(m_nb(file) == 0){
-                sleep(10);
+                pthread_cond_wait(&file->file->rec, &file->file->mutex);
             }
+            r = pthread_mutex_unlock(&file->file->mutex);
+            // if(r == -1) return -1;
             if(type>0){
                 //je dois le mettre dans mon tableau
                 size_t l= sizeof(je_suis_bloque);
@@ -352,7 +362,6 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
                             if(r == -1) return -1;
                         }
                         //on a deja fait un tour donc fait rien juste rappel 
-                        sleep(10);
                         return (m_reception(file,msg,len,type,flags,1));
                     }
                 }
@@ -382,6 +391,20 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,i
 
 int enregistrement(MESSAGE *file, int signal, long type){
     if(m_nbSignal(file) < NBSIG){
+        size_t l = sizeof(signalEnregis);
+        // verifier que proc pas deja enregistrer
+        for(int i=0; i < m_nbSignal(file); i++){
+            //pour chaque signalEnregis
+            char buf[l];
+            for (int j=0; j < l; j++){
+                buf[j] = file->file->enregistrement[j + i*l];
+            }
+            signalEnregis * sig = (signalEnregis*)buf;
+            if(sig->pid == getpid()){
+                return -1;
+            }
+        }
+
         signalEnregis *sig = malloc(sizeof(signalEnregis));
         sig->pid = getpid();
         sig->typeMess = type;
@@ -475,7 +498,7 @@ void affichage_entete(enteteFile *e, size_t nbM, size_t lm, size_t nbS, size_t n
             buf[j] = e->bloque[j+ i*ls2];
         }
         je_suis_bloque * b = (je_suis_bloque*)buf;
-        printf("typemess : %zu, cb : %zu\n", 
+        printf("typemess : %zu, cbBloque : %zu\n", 
                 b->typeMess, b->cb);
     }
     size_t emplacement = 0;

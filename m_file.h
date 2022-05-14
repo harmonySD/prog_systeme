@@ -47,6 +47,8 @@ typedef struct{
     int lastSignal;
     int lastBloque;
     pthread_mutex_t mutex;
+    pthread_cond_t env;
+    pthread_cond_t rec;
     char enregistrement[NBSIG*sizeof(signalEnregis)];
     char bloque[NBTYPE*sizeof(je_suis_bloque)];
     char messages[];
@@ -67,22 +69,24 @@ extern int initialiser_cond(pthread_cond_t *pcond);
 extern MESSAGE *m_connexion( const char *nom, int options, int nb, ...);//size_t nb_msg, size_t len_max, mode_t mode
 extern int m_deconnexion(MESSAGE *file);
 extern int m_destruction(const char *nom);
+
 extern int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag);
 extern void suppressionMess(MESSAGE *file, size_t taille, size_t deb);
 extern ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags,int tour);
+
 extern size_t m_message_len(MESSAGE *file);
 extern size_t m_capacite(MESSAGE *file);
 extern size_t m_nb(MESSAGE *file);
 extern size_t m_nbSignal(MESSAGE *file);
 extern size_t m_size_messages(MESSAGE *file);
+
 extern int enregistrement(MESSAGE *file, int signal, long type);
 extern void suppressionSig(MESSAGE *file, int pos);
 extern int desenregistrement(MESSAGE *file, pid_t pid);
+
 extern void affichage_message(MESSAGE *m);
 extern void affichage_mon_message(mon_message *m);
 extern void affichage_entete(enteteFile *e, size_t nb, size_t l, size_t nbS, size_t nbT);
-// extern void affichage_signal(signalTab *s, size_t nb);
-// extern void affichage_mon_mess(mon_message *mm);
 
 
 #endif
