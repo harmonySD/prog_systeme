@@ -121,7 +121,7 @@ int main(int argc, char const *argv[]){
         printf("\n");
         printf("-----Pid proc %d -----\n\n",getpid());
         printf("----- Veuillez choisir/ecrire votre action : -----\n");
-        printf("Afficher la liste (a),\n");
+        printf("Afficher la file (a),\n");
         printf("Envoyer un message (e), \nRecevoir un message (r), \n");
         printf("S'enregistrer (s),\n");
         printf("Se deconnecter (d), \nDetruire la file (n),\n");
@@ -226,7 +226,7 @@ int main(int argc, char const *argv[]){
 
             int enre = enregistrement(m, signal, type);
             printf("enregistrement : %d\n",enre);
-            affichage_message(m);
+
         }
         else if(choix == 'd'){
             printf("deco %d\n",m_deconnexion(m));
