@@ -17,12 +17,12 @@ int main(int argc, char const *argv[]){
     // /dev/shm
 
     char path[10] = {0};
-    printf("Nom de la file commence par / et de moins de 9 caractere :    ");
+    printf("Nom de la file commence par / et de moins de 9 caractere ou file anonyme (n) :    ");
     scanf("%s", path);
     // printf("path : %s %ld\n",path,sizeof(path));
     purger();
-    while(path[0] != '/' || sizeof(path) > 10){
-        printf("Erreur : Nom de la file commence par / et de moins de 9 caractere :    ");
+    while(path[0] != '/' && strcmp(path, "n") != 0 && sizeof(path) > 10){
+        printf("Erreur : Nom de la file commence par / et de moins de 9 caractere ou file anonyme (n) :    ");
         scanf("%s", path);
         purger();
     }
@@ -31,14 +31,18 @@ int main(int argc, char const *argv[]){
     MESSAGE *m = malloc(sizeof(MESSAGE));
 
     char choix;
-    printf("\nCreation (c) ou connection (n) a une file :    ");
-    scanf("%c", &choix);
-    purger();
-    while(choix != 'c' && choix != 'n'){
-        printf("Erreur : Creation (c) ou connection (n) a une file :    ");
+    if(strcmp(path, "n") == 0) choix = 'c';
+    else {
+        printf("\nCreation (c) ou connection (n) a une file :    ");
         scanf("%c", &choix);
         purger();
+        while(choix != 'c' && choix != 'n'){
+            printf("Erreur : Creation (c) ou connection (n) a une file :    ");
+            scanf("%c", &choix);
+            purger();
+        }
     }
+    
     if(choix == 'n'){
         int option;
         printf("\nChoix option : \nlecture et ecriture (0), \nlecture (1), \necriture (2) : \n     ");
@@ -70,7 +74,7 @@ int main(int argc, char const *argv[]){
         int optionC;
         printf("\n----- Choix option : -----");
         printf("\nlecture et ecriture en creation (0), \nlecture et ecriture en creation et execution (1)");
-        printf("\nlecture  (2), \nlecture en creation et execution (3)");
+        printf("\nlecture en creation (2), \nlecture en creation et execution (3)");
         printf("\necriture en creation (4), \necriture en creation et execution (5) : \n     ");
         scanf("%d", &optionC);
         purger();
@@ -105,37 +109,38 @@ int main(int argc, char const *argv[]){
         else m = m_connexion(path, option, 3, nbMsg, tailleMsg, S_IWUSR);
 
     }
-    affichage_message(m);
-
-    // MESSAGE* m = m_connexion(path, O_RDWR|O_CREAT|O_EXCL, 3, 3, 10, S_IRUSR | S_IWUSR);
- 
+    if(m == NULL) {
+        printf("Erreur lors de la connection à la file\n");
+        return 1;
+    }
     affichage_message(m);
     printf("pid proc %d \n",getpid());
-
-    if(m == NULL) return 1;
 
     int arret = 1;
     while (arret == 1){
         printf("\n");
+        printf("-----Pid proc %d -----\n\n",getpid());
         printf("----- Veuillez choisir/ecrire votre action : -----\n");
         printf("Afficher la file (a),\n");
         printf("Envoyer un message (e), \nRecevoir un message (r), \n");
         printf("S'enregistrer (s),\n");
-        printf("Se deconnecter (d), \nDetruire la file (n)\n     ");
+        printf("Se deconnecter (d), \nDetruire la file (n),\n");
+        printf("Quitter la boucle et stopper le processus (q)\n     ");
         char choix; 
         scanf("%c", &choix);
         purger();
-        if(choix == 'a'){
-            affichage_message(m);
-        }
+        if(choix == 'a') affichage_message(m);
+        else if(choix == 'q') arret = 0;
         else if(choix == 'e'){
-            char t[m_message_len(m)*m_message_len(m)];
+            char *t = NULL;;
+            size_t size = m_message_len(m)*m_message_len(m);
             printf("Veuillez ecrire votre message : \n     ");
-            scanf("%s",t);
-            purger();
+            getline(&t, &size, stdin);
             int taille = tailleReelle(t);
             char tMess[taille];
-            memcpy(tMess,t,taille);
+            memcpy(tMess,t,taille-1);
+            tMess[taille-1] = '\0';
+            free(t);
             mon_message *mess = malloc(sizeof(mon_message) + sizeof(tMess));
             mess->type = (long) getpid();
             mess->len = sizeof(tMess);
@@ -153,14 +158,12 @@ int main(int argc, char const *argv[]){
             if(mode == 1) j = m_envoi(m, mess, sizeof(tMess), O_NONBLOCK);
             else j = m_envoi(m, mess, sizeof(tMess), 0);
             if(j == 0){
-                printf("Ok envoie %d\n", j);
+                printf("\n-----Ok envoie %d-----\n\n", j);
             }
             else if(j == -1 && errno == EAGAIN)
-                printf("File pleine, attendez un peu\n");
+                printf("\n-----File pleine, attendez un peu-----\n\n");
             else 
-                printf("erreur\n");
-            printf("pid proc %d \n",getpid());
-
+                printf("\n-----Erreur-----\n\n");
         }
         else if(choix == 'r'){
             int len_mess = m_message_len(m);
@@ -187,16 +190,15 @@ int main(int argc, char const *argv[]){
             if(mode == 1) j = m_reception(m, mess, len_mess, type, O_NONBLOCK, 0);
             else j = m_reception(m, mess, len_mess, type, 0, 0);
             if(j != -1){
-                printf("Ok recu %d\n", j);
+                printf("\n-----Ok recu %d-----\n\n", j);
                 affichage_mon_message(mess);            
             }
             else if(j == -1 && errno == EMSGSIZE)
                 printf("taille donner trop petite\n");
             else if(j == -1 && errno == EAGAIN)
-                printf("File vide, attendez un peu\n");
+                printf("\n-----File vide, attendez un peu-----\n\n");
             else 
-                printf("erreur\n");
-            printf("pid proc %d \n",getpid());
+                printf("\n-----Erreur-----\n\n");
         }
         else if(choix == 's'){
             int sig;
