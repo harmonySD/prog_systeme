@@ -19,7 +19,6 @@ int main(int argc, char const *argv[]){
     char path[10] = {0};
     printf("Nom de la file commence par / et de moins de 9 caractere ou file anonyme (n) :    ");
     scanf("%s", path);
-    // printf("path : %s %ld\n",path,sizeof(path));
     purger();
     while(path[0] != '/' && strcmp(path, "n") != 0 && sizeof(path) > 10){
         printf("Erreur : Nom de la file commence par / et de moins de 9 caractere ou file anonyme (n) :    ");

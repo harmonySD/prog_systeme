@@ -69,20 +69,16 @@ size_t m_nb(MESSAGE *file){
     int nb = 0;
     size_t emplacement = 0;
     size_t tailleMax = m_size_messages(file);
-    int i=0;
-    while(emplacement < m_size_messages(file) * file->file->capacite && emplacement < file->file->last){
-    // for(int i=0; i < file->file->capacite; i++){
+    while(emplacement < m_size_messages(file) * file->file->capacite 
+            && emplacement < file->file->last){
         // ne pas depasser last qui signifie le dernier message enregistrer
-        if(emplacement < file->file->last){
-            char buf[tailleMax];
-            for(int j=0; j < tailleMax; j++){
-                buf[j] = file->file->messages[j + emplacement];
-            }
-            mon_message * mess = (mon_message*)buf;
-            nb++;
-            emplacement += sizeof(mon_message) + mess->len; 
-        }        
-        i++;
+        char buf[tailleMax];
+        for(int j=0; j < tailleMax; j++){
+            buf[j] = file->file->messages[j + emplacement];
+        }
+        mon_message * mess = (mon_message*)buf;
+        nb++;
+        emplacement += sizeof(mon_message) + mess->len;        
     }
     return nb;
 }
@@ -100,10 +96,12 @@ size_t m_size_signal(MESSAGE *file){
 }
 // savoir si on peut encore ajouter un message
 int encorePlace(MESSAGE *file, const void *msg, size_t len){
-    printf("nbMess %ld\n",m_nb(file));
     if(m_nb(file) < file->file->capacite) return 1;
     else {
-        if(file->file->last + sizeof(mon_message) + len <= m_size_messages(file) * file->file->capacite)
+        // verifier si apres ajout du message last 
+        // <= taille de la file de message  
+        if(file->file->last + sizeof(mon_message) + len 
+                <= m_size_messages(file) * file->file->capacite)
             return 1;
         else return 0;
     }
@@ -111,11 +109,11 @@ int encorePlace(MESSAGE *file, const void *msg, size_t len){
 
 // connexion a une file de message ou creation
 MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ 
-    //size_t nb_msg, size_t len_max, mode_t mode
+    // size_t nb_msg, size_t len_max, mode_t mode
     // nb = 0 ou 3 -> nb darguments en plus
     MESSAGE *mess = malloc(sizeof(MESSAGE));
     enteteFile *entete;
-    //option ne contient pas ocreat
+    // option ne contient pas ocreat
     if((options == O_RDONLY)||(options == O_WRONLY)||(options == O_RDWR)){
         // on ne cree pas la file on a que 2 arg 
         int d = shm_open(nom, options, S_IRUSR | S_IWUSR);
@@ -193,7 +191,7 @@ int m_deconnexion(MESSAGE *file){
         + sizeof(signalEnregis)*NBSIG+sizeof(je_suis_bloque)*NBTYPE);
 }
 
-//destruction de la file
+// destruction de la file
 int m_destruction(const char *nom){
     return shm_unlink(nom);
 }
@@ -218,12 +216,12 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
         if(msgflag == 0){
             // bloquant 
             int r = pthread_mutex_lock(&file->file->mutex);
-            // if(r == -1) return -1;
+            if(r == -1) return -1;
             while(m_nb(file) >= file->file->capacite){
                 pthread_cond_wait(&file->file->env, &file->file->mutex);
             }
             r = pthread_mutex_unlock(&file->file->mutex);
-            // if(r == -1) return -1;
+            if(r == -1) return -1;
             return m_envoi(file, msg, len, msgflag);
         }
         else {
@@ -235,7 +233,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
     // signaux a envoyer SSI aucun proc suspendu en attente de ce message
     size_t l = m_size_signal(file);
     for(int i=0; i < m_nbSignal(file); i++){
-     //pour chaque signalEnregistre
+     // pour chaque signalEnregistre
         char buf[l];
         for (int j=0; j < l; j++){
             buf[j] = file->file->enregistrement[j + i*l];
@@ -252,7 +250,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
                     buf[j] = file->file->bloque[j + i*l];
                 }
                 je_suis_bloque *b = (je_suis_bloque*)buf;
-                //verif type 
+                // verif type 
                 if(b->typeMess == sig->typeMess){
                     if(b->cb == 0){
                         kill(sig->pid, sig->typeSignal);
@@ -261,8 +259,7 @@ int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
                     }else{
                         printf("impossible processus en attente pour ce type de message\n");
                     }
-                }
-                
+                }  
             }
             kill(sig->pid, sig->typeSignal);
             // desenregistre 
@@ -278,7 +275,7 @@ void suppressionMess(MESSAGE *file, size_t taille, size_t deb){
     int r = pthread_mutex_lock(&file->file->mutex);
     if(r == -1) exit(0);
     for(int i=deb; i < file->file->last; i++){
-        //pour chaque mon_message
+        // pour chaque mon_message
         file->file->messages[i-taille] = file->file->messages[i];      
     }
     file->file->last -= taille;
@@ -357,29 +354,29 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, 
                 }       
             }
         }
-        //bloquant 
-        //si j'arrive c'est que jai pas le type de ce message 
+        // bloquant 
+        // si j'arrive c'est que jai pas le type de ce message 
         if(flags == 0){
             int r = pthread_mutex_lock(&file->file->mutex);
-            // if(r == -1) return -1;
+            if(r == -1) return -1;
             while(m_nb(file) == 0){
                 pthread_cond_wait(&file->file->rec, &file->file->mutex);
             }
             r = pthread_mutex_unlock(&file->file->mutex);
-            // if(r == -1) return -1;
+            if(r == -1) return -1;
             if(type>0){
-                //je dois le mettre dans mon tableau
+                // je dois le mettre dans mon tableau
                 size_t l= sizeof(je_suis_bloque);
-                //regarder si il y a deja un un attente (donc on fait juste ++)
+                // regarder si il y a deja un un attente (donc on fait juste ++)
                 for(int i=0; i < m_nbType(file); i++){
                     char buf[l];
                     for(int j=0; j < l ; j++){
                         buf[j] = file->file->bloque[j + i*l];
                     }
                     je_suis_bloque *b = (je_suis_bloque*)buf;
-                    //on a trouver 
+                    // on a trouver 
                     if(b->typeMess == type){
-                        //si tour =0 on a pas deja fait de tour donc ++
+                        // si tour =0 on a pas deja fait de tour donc ++
                         if(tour == 0){
                             int r = pthread_mutex_lock(&file->file->mutex);
                             if(r == -1) return -1;
@@ -388,11 +385,11 @@ ssize_t m_reception(MESSAGE *file, void *msg, size_t len, long type, int flags, 
                             r = pthread_mutex_unlock(&file->file->mutex);
                             if(r == -1) return -1;
                         }
-                        //on a deja fait un tour donc fait rien juste rappel 
+                        // on a deja fait un tour donc fait rien juste rappel 
                         return (m_reception(file,msg,len,type,flags,1));
                     }
                 }
-                //cree 
+                // cree 
                 int r = pthread_mutex_lock(&file->file->mutex);
                 if(r == -1) return -1;
                 je_suis_bloque *b = malloc(sizeof(je_suis_bloque));
@@ -431,7 +428,6 @@ int enregistrement(MESSAGE *file, int signal, long type){
                 return -1;
             }
         }
-
         signalEnregis *sig = malloc(sizeof(signalEnregis));
         sig->pid = getpid();
         sig->typeMess = type;
@@ -457,7 +453,7 @@ void suppressionSig(MESSAGE *file, int pos){
     int r = pthread_mutex_lock(&file->file->mutex);
     if(r == -1) exit(0);
     for(int i=pos; i < m_nbSignal(file); i++){
-        //pour chaque signalEnregis
+        // pour chaque signalEnregis
         size_t l = sizeof(signalEnregis);
         for (int j=0; j < l; j++){
             file->file->enregistrement[j + i*l] = 
@@ -471,9 +467,9 @@ void suppressionSig(MESSAGE *file, int pos){
 
 int desenregistrement(MESSAGE *file, pid_t pid){
     size_t l = sizeof(signalEnregis);
-    //lire le premier processus dont le pid est getpid()
+    // lire le premier processus dont le pid est getpid()
     for(int i=0; i < m_nbSignal(file); i++){
-        //pour chaque signalEnregis
+        // pour chaque signalEnregis
         char buf[l];
         for (int j=0; j < l; j++){
             buf[j] = file->file->enregistrement[j + i*l];
@@ -494,7 +490,6 @@ void affichage_message(MESSAGE *m){
     else{
         printf("\n-----DEBUT-----\n");
         printf("type : %ld\n",m->type);
-        printf("sizeFile %ld\n", m_size_messages(m) * m->file->capacite);
         affichage_entete(m->file, m_nb(m), m_size_messages(m), m_nbSignal(m),m_nbType(m));
     } 
 }
