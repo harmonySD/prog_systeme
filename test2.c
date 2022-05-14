@@ -26,7 +26,7 @@ int main(int argc, char const *argv[]){
         scanf("%s", path);
         purger();
     }
-    shm_unlink(path);
+    // shm_unlink(path);
 
     MESSAGE *m = malloc(sizeof(MESSAGE));
 
@@ -119,20 +119,24 @@ int main(int argc, char const *argv[]){
     int arret = 1;
     while (arret == 1){
         printf("\n");
+        printf("-----Pid proc %d -----\n\n",getpid());
         printf("----- Veuillez choisir/ecrire votre action : -----\n");
+        printf("Afficher la liste (a),\n");
         printf("Envoyer un message (e), \nRecevoir un message (r), \n");
         printf("S'enregistrer (s),\n");
-        printf("Se deconnecter (d), \nDetruire la file (n)\n     ");
+        printf("Se deconnecter (d), \nDetruire la file (n),\n");
+        printf("Quitter la boucle et stopper le processus (q)\n     ");
         char choix; 
         scanf("%c", &choix);
         purger();
-        if(choix == 'e'){
+        if(choix == 'a') affichage_message(m);
+        else if(choix == 'q') arret = 0;
+        else if(choix == 'e'){
             char *t = NULL;;
             size_t size = m_message_len(m)*m_message_len(m);
             printf("Veuillez ecrire votre message : \n     ");
             getline(&t, &size, stdin);
             int taille = tailleReelle(t);
-            printf("taille %d\n", taille);
             char tMess[taille];
             memcpy(tMess,t,taille-1);
             tMess[taille-1] = '\0';
@@ -154,15 +158,12 @@ int main(int argc, char const *argv[]){
             if(mode == 1) j = m_envoi(m, mess, sizeof(tMess), O_NONBLOCK);
             else j = m_envoi(m, mess, sizeof(tMess), 0);
             if(j == 0){
-                printf("Ok envoie %d\n", j);
-                affichage_message(m);
+                printf("\n-----Ok envoie %d-----\n\n", j);
             }
             else if(j == -1 && errno == EAGAIN)
-                printf("File pleine, attendez un peu\n");
+                printf("\n-----File pleine, attendez un peu-----\n\n");
             else 
-                printf("erreur\n");
-            printf("pid proc %d \n",getpid());
-
+                printf("\n-----Erreur-----\n\n");
         }
         else if(choix == 'r'){
             int len_mess = m_message_len(m);
@@ -189,17 +190,15 @@ int main(int argc, char const *argv[]){
             if(mode == 1) j = m_reception(m, mess, len_mess, type, O_NONBLOCK, 0);
             else j = m_reception(m, mess, len_mess, type, 0, 0);
             if(j != -1){
-                printf("Ok recu %d\n", j);
+                printf("\n-----Ok recu %d-----\n\n", j);
                 affichage_mon_message(mess);            
             }
             else if(j == -1 && errno == EMSGSIZE)
                 printf("taille donner trop petite\n");
             else if(j == -1 && errno == EAGAIN)
-                printf("File vide, attendez un peu\n");
+                printf("\n-----File vide, attendez un peu-----\n\n");
             else 
-                printf("erreur\n");
-            affichage_message(m);
-            printf("pid proc %d \n",getpid());
+                printf("\n-----Erreur-----\n\n");
         }
         else if(choix == 's'){
             int sig;
@@ -228,8 +227,6 @@ int main(int argc, char const *argv[]){
             int enre = enregistrement(m, signal, type);
             printf("enregistrement : %d\n",enre);
             affichage_message(m);
-            printf("pid proc %d \n",getpid());
-
         }
         else if(choix == 'd'){
             printf("deco %d\n",m_deconnexion(m));

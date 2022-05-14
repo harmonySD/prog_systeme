@@ -63,12 +63,15 @@ size_t m_size_messages(MESSAGE *file){
 size_t m_capacite(MESSAGE *file){
     return file->file->capacite;
 }
+
 // nombre de message enregistrer
 size_t m_nb(MESSAGE *file){
     int nb = 0;
     size_t emplacement = 0;
     size_t tailleMax = m_size_messages(file);
-    for(int i=0; i < file->file->capacite; i++){
+    int i=0;
+    while(emplacement < m_size_messages(file) * file->file->capacite && emplacement < file->file->last){
+    // for(int i=0; i < file->file->capacite; i++){
         // ne pas depasser last qui signifie le dernier message enregistrer
         if(emplacement < file->file->last){
             char buf[tailleMax];
@@ -79,6 +82,7 @@ size_t m_nb(MESSAGE *file){
             nb++;
             emplacement += sizeof(mon_message) + mess->len; 
         }        
+        i++;
     }
     return nb;
 }
@@ -94,6 +98,16 @@ size_t m_nbType(MESSAGE *file){
 size_t m_size_signal(MESSAGE *file){
     return(sizeof(signalEnregis));
 }
+// savoir si on peut encore ajouter un message
+int encorePlace(MESSAGE *file, const void *msg, size_t len){
+    printf("nbMess %ld\n",m_nb(file));
+    if(m_nb(file) < file->file->capacite) return 1;
+    else {
+        if(file->file->last + sizeof(mon_message) + len <= m_size_messages(file) * file->file->capacite)
+            return 1;
+        else return 0;
+    }
+}
 
 // connexion a une file de message ou creation
 MESSAGE *m_connexion(const char *nom, int options, int nb, ...){ 
@@ -105,11 +119,18 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
     if((options == O_RDONLY)||(options == O_WRONLY)||(options == O_RDWR)){
         // on ne cree pas la file on a que 2 arg 
         int d = shm_open(nom, options, S_IRUSR | S_IWUSR);
-        if(d < 0) return NULL;
+        if(d < 0){ 
+            printf("shm_open\n");
+            return NULL;
+        }
         struct stat buf;
         int r = fstat(d,&buf);
         if(r == -1) return NULL;
         entete = mmap(NULL, buf.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, d, 0);
+        if(entete == MAP_FAILED){
+            printf("errno %s\n",strerror(errno));
+            return NULL;
+        }
         mess->type = buf.st_mode;
         mess->file = entete;        
     }else{
@@ -121,23 +142,30 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         nb_msg = (size_t) va_arg(param, size_t);
         len_max = (size_t) va_arg(param, size_t);
         mode = (mode_t)va_arg(param, int);
+        va_end(param);
         size_t tailleent = sizeof(enteteFile) + (sizeof(mon_message) + len_max)*nb_msg
                     + sizeof(signalEnregis)*NBSIG + sizeof(je_suis_bloque)*NBTYPE;
         if(nom == NULL){
             // file ano
             entete = mmap(NULL, tailleent, PROT_READ|PROT_WRITE, 
                         MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+            if(entete == MAP_FAILED){
+                printf("errno %s\n",strerror(errno));
+                return NULL;
+            }
         }else {
             // file avec un nom
             int d = shm_open(nom, options, mode);
             ftruncate(d, sizeof(enteteFile));
             if(d < 0) return NULL;
             entete = mmap(NULL, tailleent, PROT_READ|PROT_WRITE, MAP_SHARED, d, 0);
+            if(entete == MAP_FAILED){
+                printf("errno %s\n",strerror(errno));
+                return NULL;
+            } 
         }
         // initialisation du MESSAGE et de lentete
         int r = initialiser_mutex(&entete->mutex);
-        if(r == -1) return NULL;
-        r = pthread_mutex_lock(&entete->mutex);
         if(r == -1) return NULL;
         entete->capacite = nb_msg;
         entete->first = 0;
@@ -148,33 +176,27 @@ MESSAGE *m_connexion(const char *nom, int options, int nb, ...){
         mess->type = mode;
         mess->file = entete;
         msync(&mess->file, sizeof(mess->file), MS_SYNC);
-        r = pthread_mutex_unlock(&entete->mutex);
-        if(r == -1) return NULL;
-        va_end(param);
     }
     return mess;   
 }
 
 // deconnection de la file 
 int m_deconnexion(MESSAGE *file){
-    if(munmap(file->file, 
+    return munmap(file->file, 
         sizeof(enteteFile) + m_size_messages(file) * file->file->capacite 
-            + sizeof(signalEnregis)*NBSIG+sizeof(je_suis_bloque)*NBTYPE) == -1)
-        return -1;    
-    return 0;
+        + sizeof(signalEnregis)*NBSIG+sizeof(je_suis_bloque)*NBTYPE);
 }
 
 //destruction de la file
 int m_destruction(const char *nom){
-    if(shm_unlink(nom) == -1) return -1;
-    return 0;
+    return shm_unlink(nom);
 }
 
 // envoie de message
 int m_envoi(MESSAGE *file, const void *msg, size_t len, int msgflag){
     if(!(file->type & S_IWUSR)) return -1;
     // tableau de message non plein
-    if(m_nb(file) < file->file->capacite){
+    if(encorePlace(file, msg, len) == 1){
         // verifier len pas trop grand
         if(file->file->longMax < len) return -1;
         int r = pthread_mutex_lock(&file->file->mutex);
@@ -455,6 +477,7 @@ void affichage_message(MESSAGE *m){
     else{
         printf("\n-----DEBUT-----\n");
         printf("type : %ld\n",m->type);
+        printf("sizeFile %ld\n", m_size_messages(m) * m->file->capacite);
         affichage_entete(m->file, m_nb(m), m_size_messages(m), m_nbSignal(m),m_nbType(m));
     } 
 }
