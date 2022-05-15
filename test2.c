@@ -68,16 +68,16 @@ int main(int argc, char const *argv[]){
         // option de la file
         int optionC;
         printf("\n----- Choix option : -----");
-        printf("\nlecture et ecriture en creation (0), \nlecture et ecriture en creation et execution (1)");
-        printf("\nlecture en creation (2), \nlecture en creation et execution (3)");
-        printf("\necriture en creation (4), \necriture en creation et execution (5) : \n     ");
+        printf("\nlecture et ecriture en creation (0), \nlecture et ecriture en creation et existence (1)");
+        printf("\nlecture en creation (2), \nlecture en creation et existence (3)");
+        printf("\necriture en creation (4), \necriture en creation et existence (5) : \n     ");
         scanf("%d", &optionC);
         purger();
         while(optionC < 0 || optionC > 5){
             printf("Erreur : Choix option : ");
-            printf("\nlecture et ecriture en creation (0), \nlecture et ecriture en creation et execution (1)");
-            printf("\nlecture  (2), \nlecture en creation et execution (3)");
-            printf("\necriture en creation (4), \necriture en creation et execution (5) : \n     ");
+            printf("\nlecture et ecriture en creation (0), \nlecture et ecriture en creation et existence (1)");
+            printf("\nlecture  (2), \nlecture en creation et existence (3)");
+            printf("\necriture en creation (4), \necriture en creation et existence (5) : \n     ");
             scanf("%d", &optionC);
             purger();
         }
