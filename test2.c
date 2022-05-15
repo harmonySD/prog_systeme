@@ -14,8 +14,6 @@ int tailleReelle(char *t){
 }
 
 int main(int argc, char const *argv[]){
-    // /dev/shm
-
     char path[10] = {0};
     printf("Nom de la file commence par / et de moins de 9 caractere ou file anonyme (n) :    ");
     scanf("%s", path);
@@ -25,8 +23,6 @@ int main(int argc, char const *argv[]){
         scanf("%s", path);
         purger();
     }
-    // shm_unlink(path);
-
     MESSAGE *m = malloc(sizeof(MESSAGE));
 
     char choix;
@@ -168,7 +164,7 @@ int main(int argc, char const *argv[]){
             int len_mess = m_message_len(m);
             mon_message *mess = malloc(sizeof(mon_message) + len_mess);
 
-            // typoe du message a recevoir
+            // type du message a recevoir
             long type;
             printf("\nChoix type message a recevoir (0, pid, -pid):      ");
             scanf("%ld", &type);
@@ -235,7 +231,5 @@ int main(int argc, char const *argv[]){
             arret = 0;
         }
     }
-
-
     return 0;
 }

@@ -1,7 +1,7 @@
 #include "m_file.h"
 
 int main(int argc, char const *argv[]){
-    // /dev/shm
+
 
     char * path = "/a";
     // shm_unlink(path);
@@ -32,7 +32,7 @@ int main(int argc, char const *argv[]){
     printf("*********************ENVOIE************************\n\n");
     
 
-    // int t[2] = {-12, 99};
+
     for(int i=0; i < 5; i++){
         char t[] = "salut";
         t[sizeof(t)-1] = i +'0';

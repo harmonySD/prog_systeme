@@ -56,7 +56,6 @@ typedef struct{
 
 typedef struct{
     enteteFile *file;
-    // signalTab *signal;
     long type;
 }MESSAGE;
 
